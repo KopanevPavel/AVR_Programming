@@ -1,80 +1,131 @@
-; KURSACH
-; Camera_control.asm
-;
-; Created: 06.11.2018 15:30:07
-; Author : Pavel Kopanev
-;
-; ==
-; PB7, PB6, PB5, PB4 - выходы, управляющие драйвером
-; PD0 - RXD0, PD1 - TXD0, PD2 - FLOW CONTROL
-; PA0 - ADC0
-.include "m164Adef.inc"
+;***************************************************************
+;* Created:         16.10.2018 15:30:07                        *
+;* Author:          Pavel Kopanev                              *
+;* Version:         1.0                                        *
+;* Title:           Camera_control.asm                         *
+;* Device           ATmega16A                                  *
+;* Clock frequency: 11.592 MHz                                 *
+;***************************************************************
+
+;***************************************************************
+; Программа управления объективом трансфокатором               *
+; подводной видеокамеры                                        *
+;                                                              *
+; PB0, PB1, PB2, PB3 - выходы, управляющие драйвером           *
+; PD0 - RXD0, PD1 - TXD0, PD2 - FLOW CONTROL - выводы USART    *
+; PA0 - ADC0, PA1 - ADC1 - выводы АЦП                          *
+;***************************************************************
+
+;***************************************************************
+.include "m16Adef.inc" ; Присоединение файла описаний
+.list ; Включение листинга                                                                      
+;***************************************************************
+
+;***** REGISTER VARIABLES **************************************
 .def tempL = R16
 .def tempH = R17
-.def rxBytes = R18 ; Счетчик принятых байт
-.def txBytes = R19 ; Счетчик переданных байт
-.def rxChecksum = R20 ; Контрольная сумма принятых байт
-.def flagReg = R21 ; Регистр флагов
-.def ConvCount = R22 ; Счетчик измерений аналого-цифрового преобразователя
-.def ADC1 = R23 ; Сумма значений АЦП
-.def ADC2 = R24
-.equ FLAG_RECEIVE = 0 ; Флаг принятого запроса
-.equ FLAG_TRANSMIT = 1 ; Флаг завершения передачи
-.equ FLAG_ADC_READY = 2 ; Флаг завершения замера АЦП
-.equ VAL_TX = 5 ; Количество байт для обмена
-.equ VAL_RX = 3
-.equ VAL_TIMEOUT = 35 ; Таймаут (35 переполнений - 1 секунда)
-.equ VAL_CONVERTER = 8 ; Количество измерений аналого-цифрового преобразователя
-.equ VAL_CONV_SHIFT = 3 ; Сдвиг для среднего арифметического результатов (квадратный корень от VAL_CONVERTER)
+.def TimeOUT_T0 = R4 ; Счетчик переполний Т0 (1024*255/11592000*Xotc=1cek => Xotc=44) 
+.def Counter_Receive = R18 ; Счетчик принятых байт
+.def Counter_Transmit = R19 ; Счетчик переданных байт
+.def Checksum_Receive = R20 ; Контрольная сумма принятых байт
+.def Checksum_Transmit = R21 ; Контрольная сумма переданных байт
+.def FLAG_Register = R5 ; Регистр флагов
+.def Counter_ADC0 =R6 ; Счетчик числа преобразований при их усреднении АЦП0
+.def Counter_ADC1 = R7 ; Счетчик числа преобразований при их усреднении АЦП1
+.def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0
+.def ADC_L0 = R23
+.def ADC_H1 = R24 ; Пара регистров для хранения и усреднения результата преобразования АЦП1
+.def ADC_L1 = R25
+;***** FLAGS ***************************************************
+.equ FLAG_Receive = 0 ; Флаг принятого запроса
+.equ FLAG_Transmit = 1 ; Флаг завершения передачи
+.equ FLAG_ADC_Ready = 2 ; Флаг завершения замера АЦП
+;***** CONSTANTS ***********************************************
+.equ Frame_bits_Transmit = 5 ; Константа, определяющая количество бит в кадре, передаваемом модулем USART
+.equ Frame_bits_Receive = 3 ; Константа, определяющая количество бит в кадре, принимаемом модулем USART
+.equ VALUE_TimeOUT_T0 = 44 ; Таймаут (44 переполнения - 1 секунда)
+.equ VALUE_N_ADC = 8 ; Количество преобразований АЦП для одного усреднения
 .equ PIN_FLOW_CTRL = 3 ; Пин flow control
-.equ MCU_ADDRESS = 1 ; Адрес микроконтроллера
+.equ MCU_Address = 1 ; Адрес микроконтроллера
+;***** VARIABLES ***********************************************
 .DSEG
-varBuf_Rx: .BYTE 8 ; Буфер приема
-varBuf_Tx: .BYTE 8 ; Буфер передачи
+Buffer_Receive: .BYTE 8 ; Буфер приема (? байта)
+Buffer_Transmit: .BYTE 8 ; Буфер передачи (? байта)
+;***************************************************************
+
 .CSEG
-; Reset
-.org $0000
+
+.org $0000 ; Reset Vector
 rjmp Init
-; Output Compare1A Interrupt Vector Address
-.org $001A
-rjmp RX_Timeout
-; UART Receive Complete Interrupt Vector Address
-.org $0028
-rjmp RX_complete
-; UART Data Register Empty Interrupt Vector Address
-.org $002A
-rjmp UDR_empty
-; UART Transmit Complete Interrupt Vector Address
-.org $002C
-rjmp TX_complete
-; Окончание считывания АЦП
-.org $0030
-rjmp ADC_complete
+
+;***** INTERRUPT VECTORS ***************************************
+.org INT0addr; =$002	;External Interrupt0 Vector Address
+reti
+.org INT1addr; =$004	;External Interrupt1 Vector Address
+reti
+.org OC2addr;  =$006	;Output Compare2 Interrupt Vector Address
+reti
+.org OVF2addr; =$008	;Overflow2 Interrupt Vector Address
+reti 
+.org ICP1addr; =$00A	;Input Capture1 Interrupt Vector Address
+reti
+.org OC1Aaddr; =$00C	;Output Compare1A Interrupt Vector Address
+rjmp   Time_OUT
+.org OC1Baddr; =$00E	;Output Compare1B Interrupt Vector Address
+reti
+.org OVF1addr; =$010	;Overflow1 Interrupt Vector Address
+reti
+.org OVF0addr; =$012	;Overflow0 Interrupt Vector Address
+rjmp   T0_Overflow 
+.org SPIaddr;  =$014	;SPI Interrupt Vector Address
+reti
+.org URXCaddr; =$016	;UART Receive Complete Interrupt Vector Address
+rjmp   Receive_complete
+.org UDREaddr; =$018	;UART Data Register Empty Interrupt Vector Address
+rjmp   UDR_empty
+.org UTXCaddr; =$01A	;UART Transmit Complete Interrupt Vector Address
+rjmp   Transmit_Complete
+.org ADCCaddr; =$01C	;ADC Interrupt Vector Address
+reti   IN_ADC
+.org ERDYaddr; =$01E	;EEPROM Interrupt Vector Address
+reti
+.org ACIaddr;  =$020	;Analog Comparator Interrupt Vector Address
+reti
+.org TWIaddr;  =$022    ;Irq. vector address for Two-Wire Interface
+reti
+.org INT2addr; =$024    ;External Interrupt2 Vector Address
+reti
+.org OC0addr;  =$026    ;Output Compare0 Interrupt Vector Address
+reti
+.org SPMRaddr; =$028    ;Store Program Memory Ready Interrupt Vector Address
+reti
+;***************************************************************
+
+;***** INITIALISATION ******************************************
 Init:
 ; Инициализация стека (выбор вершины)
 ldi tempL, LOW(RAMEND)
 out SPL, tempL
 ldi tempL, HIGH(RAMEND)
 out SPH, tempL
+
 ; Инициализация портов ввода/вывода B
-; PB4-PB7 - выходы,
-ldi tempL, 0b11110000
+ldi tempL, 0b00001111 ; PB0-PB3 - выходы
 out DDRB, tempL
-; Отключена подтяжка на всех выходах
-ldi tempL, 0b00000000
+ldi tempL, 0b11110000 ; Включена подтяжка на свободных выходах (входы с подтягивающим резистором)
 out PORTB, tempL
 ; Инициализация портов ввода/вывода D
-; PD1, PD2 - выходы (TXD0, FLOW CONTROL), PD0 - вход (RXD0)
-ldi tempL, 0b00000110
+ldi tempL, 0b00000110 ; PD1, PD2 - выходы (TXD0, FLOW CONTROL), PD0 - вход (RXD0)
 out DDRD, tempL
-; Вкл подтяжка на PD0 (RXD0)
-ldi tempL, 0b00000001
+ldi tempL, 0b11111001 ; Вкл подтяжка на PD0 (RXD0) и на свободных выходах (входы с подтягивающим резистором)
 out PORTD, tempL;
-; Включение приема
-sbi PORTD, PIN_FLOW_CTRL
+; Инициализация портов ввода/вывода С
+ldi tempL, 0b11111111 ; PС0-PС7 - выходы
+out DDRC, tempL 
 ; Инициализация портов ввода/вывода A
- ldi tempL, 0b11111111 ; ?!
-out DDRC, tempL
+ldi tempL, 0b11111100 ; PA0, PA1 - входы АЦП (остальные - выходы)
+out DDRA, tempL
+
 ; Инициализация UART
 ; Разрешение прерывания по завершению приема
 ; Установка режима межпроцессорного обмена
@@ -119,9 +170,7 @@ clr rxChecksum
 clr flagReg
 ; Разрешаем прерывания
 sei
-;==================================================
-; Начало цикла программы
-;==================================================
+;***** MAIN PROGRAM ******************************************
 Start:
 ; Ожидание приема запроса
 sbrc flagReg, FLAG_RECEIVE
