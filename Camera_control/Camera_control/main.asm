@@ -4,7 +4,7 @@
 ;* Version:         1.0                                        *
 ;* Title:           Camera_control.asm                         *
 ;* Device           ATmega16A                                  *
-;* Clock frequency: 11.592 MHz                                 *
+;* Clock frequency: 11.0592 MHz                                 *
 ;***************************************************************
 
 ;***************************************************************
@@ -24,13 +24,13 @@
 ;***** REGISTER VARIABLES **************************************
 .def tempL = R16
 .def tempH = R17
-.def TimeOUT_T0 = R4 ; Счетчик переполний Т0 (1024*255/11592000*Xotc=1cek => Xotc=44) 
+.def TimeOUT_T0 = R4 ; Счетчик переполний Т0
 .def Counter_Receive = R18 ; Счетчик принятых байт
 .def Counter_Transmit = R19 ; Счетчик переданных байт
 .def Checksum_Receive = R20 ; Контрольная сумма принятых байт
 .def Checksum_Transmit = R21 ; Контрольная сумма переданных байт
 .def FLAG_Register = R5 ; Регистр флагов
-.def Counter_ADC0 =R6 ; Счетчик числа преобразований при их усреднении АЦП0
+.def Counter_ADC0 = R6 ; Счетчик числа преобразований при их усреднении АЦП0
 .def Counter_ADC1 = R7 ; Счетчик числа преобразований при их усреднении АЦП1
 .def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0
 .def ADC_L0 = R23
@@ -41,9 +41,9 @@
 .equ FLAG_Transmit = 1 ; Флаг завершения передачи
 .equ FLAG_ADC_Ready = 2 ; Флаг завершения замера АЦП
 ;***** CONSTANTS ***********************************************
-.equ Frame_bits_Transmit = 5 ; Константа, определяющая количество бит в кадре, передаваемом модулем USART
-.equ Frame_bits_Receive = 3 ; Константа, определяющая количество бит в кадре, принимаемом модулем USART
-.equ VALUE_TimeOUT_T0 = 44 ; Таймаут (44 переполнения - 1 секунда)
+.equ VALUE_TR = 5 ; Константа, определяющая количество байт, передаваемом модулем USART
+.equ VALUE_REC = 3 ; Константа, определяющая количество байт, принимаемом модулем USART
+.equ VALUE_TimeOUT_T0 = 42 ; Таймаут (1024*256/11059200*Xotc=1cek => Xotc=42 => 42 переполнения -> 1 секунда)
 .equ VALUE_N_ADC = 8 ; Количество преобразований АЦП для одного усреднения
 .equ PIN_FLOW_CTRL = 3 ; Пин flow control
 .equ MCU_Address = 1 ; Адрес микроконтроллера
@@ -102,80 +102,125 @@ reti
 ;***************************************************************
 
 ;***** INITIALISATION ******************************************
-Init:
 ; Инициализация стека (выбор вершины)
-ldi tempL, LOW(RAMEND)
-out SPL, tempL
-ldi tempL, HIGH(RAMEND)
-out SPH, tempL
+Init:
+	ldi tempL, LOW(RAMEND)
+	out SPL, tempL
+	ldi tempL, HIGH(RAMEND)
+	out SPH, tempL
 
 ; Инициализация портов ввода/вывода B
-ldi tempL, 0b00001111 ; PB0-PB3 - выходы
-out DDRB, tempL
-ldi tempL, 0b11110000 ; Включена подтяжка на свободных выходах (входы с подтягивающим резистором)
-out PORTB, tempL
+Init B:
+	ldi tempL, 0b00001111 ; PB0-PB3 - выходы
+	out DDRB, tempL
+	ldi tempL, 0b11110000 ; Включена подтяжка на свободных выходах (входы с подтягивающим резистором)
+	out PORTB, tempL
 ; Инициализация портов ввода/вывода D
-ldi tempL, 0b00000110 ; PD1, PD2 - выходы (TXD0, FLOW CONTROL), PD0 - вход (RXD0)
-out DDRD, tempL
-ldi tempL, 0b11111001 ; Вкл подтяжка на PD0 (RXD0) и на свободных выходах (входы с подтягивающим резистором)
-out PORTD, tempL;
+Init D:
+	ldi tempL, 0b00000110 ; PD1, PD2 - выходы (TXD0, FLOW CONTROL), PD0 - вход (RXD0)
+	out DDRD, tempL
+	ldi tempL, 0b11111001 ; Вкл подтяжка на PD0 (RXD0) и на свободных выходах (входы с подтягивающим резистором)
+	out PORTD, tempL;
 ; Инициализация портов ввода/вывода С
-ldi tempL, 0b11111111 ; PС0-PС7 - выходы
-out DDRC, tempL 
+Init C:
+	ldi tempL, 0b11111111 ; PС0-PC7 - выходы
+	out DDRC, tempL 
 ; Инициализация портов ввода/вывода A
-ldi tempL, 0b11111100 ; PA0, PA1 - входы АЦП (остальные - выходы)
-out DDRA, tempL
+Init A:
+	ldi tempL, 0b11111100 ; PA0, PA1 - входы АЦП (остальные - выходы)
+	out DDRA, tempL
 
 ; Инициализация UART
-; Разрешение прерывания по завершению приема
-; Установка режима межпроцессорного обмена
-ldi tempL, (1<<MPCM0)
-sts UCSR0A, tempL
-; Установка режима приема данных
-ldi tempL, (1<<RXCIE0)|(1<<UDRIE0)|(1<<RXEN0)|(1<<MPCM0)
-sts UCSR0B, tempL
-; Асинхронный режим, бит четности, 8 бит информации
-ldi tempL, (1<<UPM00)|(1<<UCSZ00)|(1<<UCSZ10)
-sts UCSR0C, tempL
-; Частота тактирования - 8 МГц
-; Частота обмена - 19200 бод, один
-; Инициализация аналого-цифрового конвертера
-; Вход - ADC0, AREF включен
-ldi tempL, 0
-sts ADMUX, tempL
+Init USART:
+	; Установка режима мультипроцессорного обмена
+	ldi tempL,(1<<MPCM0) 
+	sts UCSR0A,tempL
+	; Настройка скорости 	
+	ldi temp_L,35 ; (Частота кв. 11.0592 MHz, скорость обмена 19200 bps => (11.0592*10^6)/(16*19200)-1=35), U2X0=0
+	ldi temp_H,00 
+	out UBRRL,temp_L;
+	out UBRRH,temp_H
+	; Установка режима приема данных
+	ldi temp_L,(1<<RXEN)|(1<<RXCIE) ; Разрешить работу приемника, разрешить прерывание по завершению приема
+	out UCSRB,temp_L
+	; Параметры
+	ldi temp_L,(1<<URSEL)|(1<<UCSZ0)|(1<<UCSZ1) ; Асинхронный режим, 8 бит в посылке, 1 стоповый бит
+	out UCSRC,temp_L;
+
+; Инициализация АЦП
+Init ADC0:
+	; Параметры входного мультиплексора
+	ldi tempL, 0 ; Вход - ADC0, (ldi tempL, 1 -> ADC1)
+	sts ADMUX, tempL ; REFS1 = 0, REFS0 = 0 => внешний ИОН, подключенный к AREF
+	
+; Инициализация таймера TCNT0
+Init T0:
+	ldi temp,(1<<TOIE0) ; TOIE0 - Timer/Counter0 Overflow Interrupt Enable
+	out TIMSK,temp
+
+; Инициализация таймера TCNT1
+Init T1:
+	ldi tempL,0x00
+	out TCCR1A,tempL ; Выходы OCnA и OCnB отключены => обычные операции с портом
+	ldi tempL,(1<<WGM12)
+	sts TCCR1B,tempL ; WGM13 = 0,WGM12 = 1,WGM11 = 0,WGM10 = 0,режим CTC;
+					  ; Нет деления частоты, верхний предел счета - OCR1A
+	ldi tempH,0xD8 ; Пусть Time_OUT 5mcek => 0,005*11.0592*10^6=55296(D800) [19200 bits per second => 19.2 bits per ms; кадр - 11 бит => кадр должен передаться за 1.7 мс]
+	ldi tempL,0x00
+	sts OCR1AH,tempH
+	sts OCR1AL,tempL
+
 ; Обнуление участка буфера Rx в SRAM
-ldi YL, LOW(varBuf_Rx)
-ldi YH, HIGH(varBuf_Rx)
-ldi tempL, VAL_RX
-BufRxdNull:
-st Y+, tempL
-dec tempL
-cpi tempL, 0x00
-brne BufRxdNull
+	ldi YL,low(varBuf_Rxd)  ; Load Y register low буфер приема
+	ldi YH,high(varBuf_Rxd) ; Load Y register high буфер приема
+	ldi temp_L,0x00
+	ldi temp_H,VALUE_REC
+	BufRxdNull:
+		st Y+,temp_L ; Начальная установка буфер приема (store indirect)
+		dec temp_h
+		cpi temp_H,0x00     
+		brne BufRxdNull 
+
 ; Обнуление участка буфера Tx в SRAM
-ldi YL, LOW(varBuf_Tx)
-ldi YH, HIGH(varBuf_Tx)
-ldi tempL, VAL_TX
-BufTxdNull:
-st Y+, tempL
-dec tempL
-cpi tempL, 0x00
-brne BufTxdNull
+	ldi YL,low(varBuf_Txd); Load Y register low буфер передачи
+	ldi YH,high(varBuf_Txd) ; Load Y register high буфер передачи
+	ldi temp_L,0x00
+	ldi temp_H,VAL_TR
+	BufTxdNull:
+		st Y+,temp_L ; Начальная установка буфер приема (store indirect)
+		dec temp_h
+		cpi temp_H,0x00     
+		brne BufTxdNull
+
+	ldi    YL,low(varBuf_Rxd)  ; Load Y register low (указывает на начало участка памяти)
+	ldi    YH,high(varBuf_Rxd) ; Load Y register high (указывает на начало участка памяти)
+
 ; Обнуление переменных
-clr tempL
-clr tempH
-clr rxBytes
-clr txBytes
-clr rxChecksum
-clr flagReg
+	clr tempL
+	clr tempH
+	clr Counter_Receive
+	clr Counter_Transmit
+	clr Checksum_Receive
+	clr Counter_Transmit
+	clr FLAG_Register
+	clr TimeOUT_T0
+	clr ADC_H0
+	clr ADC_L0
+	clr ADC_H1
+	clr ADC_L1
+	clr Counter_ADC0
+	clr Counter_ADC1
+
 ; Разрешаем прерывания
-sei
+	sei
+;***************************************************************
+
 ;***** MAIN PROGRAM ******************************************
 Start:
 ; Ожидание приема запроса
-sbrc flagReg, FLAG_RECEIVE
-rjmp Received
-rjmp Start
+	sbrc flagReg, FLAG_RECEIVE
+	rjmp Received
+	rjmp Start
 ; Запрос принят
 Received:
 ; Загрузка адреса устройства из буфера приема
