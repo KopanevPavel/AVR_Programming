@@ -1,0 +1,76 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.7</VERSION>
+ <DEVICE>"ATmega16A"</DEVICE>
+ <WORKING_DIR>D:\School and University\AVR_kurs\Camera_control\Camera_control\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc</DIR>
+  <DIR>C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc</FILE>
+  <FILE>C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\Debug\Camera_control.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>Camera_control.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>Camera_control.map</FILE>
+  <FILE>Camera_control.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <Buffer_Receive><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>54</LINE></Buffer_Receive>
+  <Buffer_Transmit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>55</LINE></Buffer_Transmit>
+  <Init><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>109</LINE></Init>
+  <Time_OUT><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>556</LINE></Time_OUT>
+  <Receive_complete><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>376</LINE></Receive_complete>
+  <UDR_empty><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>478</LINE></UDR_empty>
+  <Transmit_Complete><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>504</LINE></Transmit_Complete>
+  <ADC_complete><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>596</LINE></ADC_complete>
+  <Init_B><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>116</LINE></Init_B>
+  <Init_D><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>122</LINE></Init_D>
+  <Init_C><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>128</LINE></Init_C>
+  <Init_A><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>132</LINE></Init_A>
+  <Init_USART><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>137</LINE></Init_USART>
+  <Init_ADC0><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>154</LINE></Init_ADC0>
+  <Init_T0><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>163</LINE></Init_T0>
+  <Init_T1><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>168</LINE></Init_T1>
+  <BufRxdNull><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>186</LINE></BufRxdNull>
+  <BufTxdNull><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>197</LINE></BufTxdNull>
+  <Start><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>226</LINE></Start>
+  <Received><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>233</LINE></Received>
+  <start_ADC><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>367</LINE></start_ADC>
+  <Wait_ADC><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>246</LINE></Wait_ADC>
+  <Change_ch_ADC><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>252</LINE></Change_ch_ADC>
+  <Change_N_ADC_channel><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>339</LINE></Change_N_ADC_channel>
+  <Wait_ADC_ch_switch><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>257</LINE></Wait_ADC_ch_switch>
+  <Transmit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>263</LINE></Transmit>
+  <Checksum_calc><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>288</LINE></Checksum_calc>
+  <Checksum_end><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>297</LINE></Checksum_end>
+  <Wait_transmit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>327</LINE></Wait_transmit>
+  <End><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>332</LINE></End>
+  <Channel_ADC0><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>361</LINE></Channel_ADC0>
+  <Channel_ADC1><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>351</LINE></Channel_ADC1>
+  <Change_channel><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>355</LINE></Change_channel>
+  <Receive_UDR_load><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>384</LINE></Receive_UDR_load>
+  <Receive_err_check><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>388</LINE></Receive_err_check>
+  <Receive_no_errors><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>395</LINE></Receive_no_errors>
+  <Receive_popRegs_exit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>469</LINE></Receive_popRegs_exit>
+  <Receive_address><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>409</LINE></Receive_address>
+  <Receive_first_byte><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>431</LINE></Receive_first_byte>
+  <Receive_checksum><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>436</LINE></Receive_checksum>
+  <Receive_end><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>443</LINE></Receive_end>
+  <Transmit_end><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>524</LINE></Transmit_end>
+  <Transmit_popRegs_exit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>547</LINE></Transmit_popRegs_exit>
+  <Read_ADC><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>603</LINE></Read_ADC>
+  <ADC_max_measure><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>632</LINE></ADC_max_measure>
+  <ADC_popRegs_exit><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>624</LINE></ADC_popRegs_exit>
+  <ADC_high_part_shift><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>637</LINE></ADC_high_part_shift>
+  <ADC_low_part_shift><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>642</LINE></ADC_low_part_shift>
+  <ADC_end><FILE>D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm</FILE><LINE>650</LINE></ADC_end>
+ </LABELS>
+</ASSEMBLER_INFO>

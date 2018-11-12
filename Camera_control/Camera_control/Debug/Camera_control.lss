@@ -1,0 +1,17 @@
+
+AVRASM ver. 2.2.7  D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm Mon Nov 12 13:54:02 2018
+
+[builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc'
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(33): warning: Register r26 already defined by the .DEF directive
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(38): warning: Register r27 already defined by the .DEF directive
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(656): error: Invalid character: '' (0x0d)
+
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(656): error: Invalid character: '' (0x0d)
+
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(656): error: Invalid character: '' (0x0d)
+
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(656): error: Invalid character: '' (0x0d)
+
+D:\School and University\AVR_kurs\Camera_control\Camera_control\main.asm(656): error: Invalid character: '' (0x0d)
+
