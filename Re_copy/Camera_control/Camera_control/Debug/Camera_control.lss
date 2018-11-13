@@ -1,12 +1,12 @@
 
-AVRASM ver. 2.2.7  D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm Tue Nov 13 17:00:51 2018
+AVRASM ver. 2.2.7  D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm Wed Nov 14 01:35:36 2018
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc'
-D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
-D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm(33): warning: Register r26 already defined by the .DEF directive
-D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm(38): warning: Register r27 already defined by the .DEF directive
+D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
+D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(33): warning: Register r26 already defined by the .DEF directive
+D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(38): warning: Register r27 already defined by the .DEF directive
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc'
-D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
+D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
                                  
                                  ;***************************************************************
                                  
@@ -1001,13 +1001,13 @@ D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\mai
                                  .org SPIaddr;  =$014	;SPI Interrupt Vector Address
 000014 9518                      reti
                                  .org URXCaddr; =$016	;UART Receive Complete Interrupt Vector Address
-000016 c0af                      rjmp   Receive_complete
+000016 c0af                      rjmp   Receive_Complete
                                  .org UDREaddr; =$018	;UART Data Register Empty Interrupt Vector Address
 000018 c0ea                      rjmp   UDR_empty
                                  .org UTXCaddr; =$01A	;UART Transmit Complete Interrupt Vector Address
 00001a c0f7                      rjmp   Transmit_Complete
                                  .org ADCCaddr; =$01C	;ADC Interrupt Vector Address
-00001c c126                      rjmp   ADC_complete
+00001c c126                      rjmp   ADC_Complete
                                  .org ERDYaddr; =$01E	;EEPROM Interrupt Vector Address
 00001e 9518                      reti
                                  .org ACIaddr;  =$020	;Analog Comparator Interrupt Vector Address
@@ -1511,7 +1511,7 @@ D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\mai
                                  ;***************************************************************
                                  
                                  ; Прерывание по завершению измерения АЦП
-                                 ADC_complete:
+                                 ADC_Complete:
                                  	; Сохранение регистров в стэк
 000143 930f                      	push tempL
 000144 931f                      	push tempH

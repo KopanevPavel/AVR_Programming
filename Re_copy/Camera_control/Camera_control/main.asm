@@ -83,13 +83,13 @@ reti
 .org SPIaddr;  =$014	;SPI Interrupt Vector Address
 reti
 .org URXCaddr; =$016	;UART Receive Complete Interrupt Vector Address
-rjmp   Receive_complete
+rjmp   Receive_Complete
 .org UDREaddr; =$018	;UART Data Register Empty Interrupt Vector Address
 rjmp   UDR_empty
 .org UTXCaddr; =$01A	;UART Transmit Complete Interrupt Vector Address
 rjmp   Transmit_Complete
 .org ADCCaddr; =$01C	;ADC Interrupt Vector Address
-rjmp   ADC_complete
+rjmp   ADC_Complete
 .org ERDYaddr; =$01E	;EEPROM Interrupt Vector Address
 reti
 .org ACIaddr;  =$020	;Analog Comparator Interrupt Vector Address
@@ -560,7 +560,7 @@ Time_OUT:
 	in tempL, SREG
 	push tempL
 
-	; Запрет прерывания таймера по переполнению канала A
+	; Запрет прерывания таймера по совпадению канала A
 	in tempL, TIMSK
 	clt
 	bld tempL, OCIE1A
@@ -593,7 +593,7 @@ Time_OUT:
 ;***************************************************************
 
 ; Прерывание по завершению измерения АЦП
-ADC_complete:
+ADC_Complete:
 	; Сохранение регистров в стэк
 	push tempL
 	push tempH

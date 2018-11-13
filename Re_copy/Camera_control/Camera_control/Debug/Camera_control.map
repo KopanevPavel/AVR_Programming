@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.7  D:\School and University\AVR_Programming\Check\Camera_control\Camera_control\main.asm Tue Nov 13 17:00:51 2018
+AVRASM ver. 2.2.7  D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm Wed Nov 14 01:35:36 2018
 
 
 EQU  SIGNATURE_000 0000001e
@@ -631,10 +631,10 @@ DSEG Buffer_Receive 00000060
 DSEG Buffer_Transmit 00000068
 CSEG Init         00000029
 CSEG Time_OUT     0000012c
-CSEG Receive_complete 000000c6
+CSEG Receive_Complete 000000c6
 CSEG UDR_empty    00000103
 CSEG Transmit_Complete 00000112
-CSEG ADC_complete 00000143
+CSEG ADC_Complete 00000143
 CSEG Init_B       0000002d
 CSEG Init_D       00000031
 CSEG Init_C       00000035
