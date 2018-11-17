@@ -24,16 +24,16 @@
 ;***** REGISTER VARIABLES **************************************
 .def tempL = R16
 .def tempH = R17
- ; .def TimeOUT_T0 = R4 ; Счетчик переполний Т0
+.def TimeOUT_T0 = R30 ; Счетчик переполний Т0
 .def Counter_Receive = R18 ; Счетчик принятых байт
 .def Counter_Transmit = R19 ; Счетчик переданных байт
 .def Checksum_Receive = R20 ; Контрольная сумма принятых байт
  ; .def Checksum_Transmit = R21 ; Контрольная сумма переданных байт
 .def FLAG_Register = R21 ; Регистр флагов
 .def Counter_ADC = R26 ; Счетчик числа преобразований при их усреднении АЦП
-.def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0
+.def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0 (фокус)
 .def ADC_L0 = R23
-.def ADC_H1 = R24 ; Пара регистров для хранения и усреднения результата преобразования АЦП1
+.def ADC_H1 = R24 ; Пара регистров для хранения и усреднения результата преобразования АЦП1 (зум)
 .def ADC_L1 = R25
 .def Number = R27 ; Номер канала АЦП
 ;***** FLAGS ***************************************************
@@ -41,10 +41,11 @@
 .equ FLAG_Transmit = 1 ; Флаг завершения передачи
 .equ FLAG_ADC_Ready = 2 ; Флаг завершения замера АЦП
 .equ FLAG_ADC_Channel_N = 3 ; Флаг изменения канала АЦП: 0 -> 0-й канал (Потенциометр 1); 1 -> 1-й канал (Потенциометр 1)
+.equ FLAG_ADC_Delay = 4 ; Флаг переполненния T0 -> позволяет реализовать измерение АЦП каждые 50 мс
 ;***** CONSTANTS ***********************************************
 .equ VALUE_TR = 7 ; Константа, определяющая количество байт, передаваемом модулем USART (Адркс МК; состояние порта, АЦП1 (2 байта), АЦП0 (2 байта), КС)
 .equ VALUE_REC = 3 ; Константа, определяющая количество байт, принимаемом модулем USART (Адрес МК; зум или фокус; команда управления)
-.equ VALUE_TimeOUT_T0 = 42 ; Таймаут (1024*256/11059200*Xotc=1cek => Xotc=42 => 42 переполнения -> 1 секунда)
+.equ VALUE_TimeOUT_T0 = 2 ; Таймаут (1024*256/11059200*Xotc=0.05cek => Xotc=2 => 2 переполнения -> 50 мс)
 .equ VALUE_N_ADC = 8 ; Количество преобразований АЦП для одного усреднения
 .equ VALUE_SHIFT = 3 ; Сдвиг для среднего арифметического результатов измерений АЦП (2^(VALUE_SHIFT) = VALUE_N_ADC)
 .equ PIN_FLOW_CTRL = 2 ; Пин flow control
@@ -78,7 +79,7 @@ reti
 .org OVF1addr; =$010	;Overflow1 Interrupt Vector Address
 reti
 .org OVF0addr; =$012	;Overflow0 Interrupt Vector Address
-; rjmp   T0_Overflow 
+rjmp   T0_Overflow 
 reti
 .org SPIaddr;  =$014	;SPI Interrupt Vector Address
 reti
@@ -156,7 +157,7 @@ Init_ADC0:
 	ldi tempL, 0 ; Вход - ADC0, (ldi tempL, 1 -> ADC1)
 	sts ADMUX, tempL ; REFS1 = 0, REFS0 = 0 => внешний ИОН, подключенный к AREF
 	       
-	ldi tempL, (1<<ADPS2)|(1<<ADPS1) ; Режим работы предделителя тактовой частоты: 110 - CLK/64
+	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1) ; Вкл. АЦП, разрешение прерывания по окончании преобразования АЦП, предделитель CLK/64 (172.8 кГц)
 	out ADCSR, tempL
 
 ; Инициализация таймера TCNT0
@@ -211,36 +212,31 @@ Init_T1:
 	clr Checksum_Receive
 	clr Counter_Transmit
 	clr FLAG_Register
-	; clr TimeOUT_T0
+	clr TimeOUT_T0
 	clr ADC_H0
 	clr ADC_L0
 	clr ADC_H1
 	clr ADC_L1
 	clr Counter_ADC
 
+	; Устанавливаем в 1 флаг задержки измерения АЦП
+	ori FLAG_Register, (1<<FLAG_ADC_Delay)
+
 	; Разрешаем прерывания
 	sei
 ;***************************************************************
 
 ;***** MAIN PROGRAM ********************************************
-Start:
-	; Ожидание приема запроса
-	sbrc FLAG_Register, FLAG_Receive ; Skip if Bit in Register Cleared
-	rjmp Received
-	rjmp Start
-
-; Запрос принят
-Received: 
-	; Загрузка адреса устройства из буфера приема
-	ld tempL, Y+ ; Load Indirect
-	; Загружаем информационный байт из буфера приема
-	ld tempL, Y+
-	; Очищаем все кроме четырех младших битов
-	andi tempL, 0b00001111
-	; Выводим на порт
-	out PORTB, tempL
-	; Включение АЦП, разрешение прерывания по окончанию считывания, начало замера
-	rjmp start_ADC
+Start_main:
+	; Включение счетчика T0
+	ldi tempL, (1<<CS02)|(1<<CS00) ; Частота TCNT0: Clk/1024, (CS02 = 1, CS01 = 0, CS00 = 1)
+	out TCCR0, tempL ; Включение счетчика
+	
+Start:	
+; Запуск АЦП	
+	sbrs FLAG_Register, FLAG_ADC_Delay
+	rjmp With_ADC_data
+	rjmp start_ADC_conversion	
 
 ; Ожидание окончания замеров
 Wait_ADC:
@@ -251,13 +247,190 @@ Wait_ADC:
 ; Запись данных с другого канала
 Change_ch_ADC:
 	rjmp Change_N_ADC_channel
-	rjmp start_ADC
+	rjmp start_ADC_conversion
 
 ; Ожидание окончания замеров данных с другого канала	
 Wait_ADC_ch_switch:	
 	sbrc FLAG_Register, FLAG_ADC_Ready
-	rjmp Transmit
+	rjmp With_ADC_data
 	rjmp Wait_ADC_ch_switch
+
+; Дальнейшее выполнение программы с наличием данных АЦП по двум каналам	
+With_ADC_data:
+	; Ожидание приема команды
+	sbrc FLAG_Register, FLAG_Receive ; Skip if Bit in Register Cleared
+	rjmp Received
+	rjmp Start ; Обновляем данные АЦП
+
+; Команда принята
+Received: 
+	; Загрузка адреса устройства из буфера приема
+	ld tempL, Y+ ; Load Indirect
+	; Загружаем информационный байт из буфера приема
+	ld tempL, Y+
+	; Очищаем все кроме четырех младших битов
+	andi tempL, 0b00001111
+	mov tempH, tempL
+	
+	andi tempL, 0b00000011 ; Управление фокусом
+	andi tempH, 0b00001100 ; Управление зумом
+;***************************************************************
+
+;****************************
+;* IN1/3   IN2/4    Mode    *
+;****************************
+;*   H       L     Forward  *
+;*   L       H     Reverse  *
+;*   H       H      Brake   *
+;*   L       L     Standby  *
+;****************************
+	
+; Управление двигателями в зависимости от текущего состояния (описывается АЦП) 
+; Фокус	
+Focus_control:	
+	sbrc tempL, 0
+	rjmp Focus_L_set
+	rjmp Focus_L_clr
+
+; Младший бит пары 1	
+Focus_L_set:
+	sbrc tempL, 1
+	rjmp Brake_Focus
+	rjmp Reverse_Focus
+
+; Младший бит пары 0	
+Focus_L_clr:
+	sbrc tempL, 1
+	rjmp Forward_Focus
+	rjmp Standby_Focus
+
+
+Reverse_Focus:
+	; Сравниваем показания АЦП с минимумом
+	cpi ADC_L0, 0b00000001 ; Compare
+	brne Reverse_Focus_Allowed
+	cpi ADC_H0, 0b00000000
+	brne Reverse_Focus_Allowed
+	rjmp Brake_Focus
+
+; Реверс разрешен
+Reverse_Focus_Allowed: 
+	rjmp Zoom_control
+
+Forward_Focus:
+	; Сравниваем показания АЦП с максимумом
+	cpi ADC_L0, 0b11111110 ; Compare
+	brne Forward_Focus_Allowed
+	cpi ADC_H0, 0b00000011
+	brne Forward_Focus_Allowed
+	rjmp Brake_Focus
+
+; Прямое вращение разрешено
+Forward_Focus_Allowed: 
+	rjmp Zoom_control
+
+Standby_Focus:
+	; Сравниваем показания АЦП с минимумом
+	cpi ADC_L0, 0b00000001 ; Compare
+	brne Standby_Focus_Rev_Allowed
+	cpi ADC_H0, 0b00000000
+	brne Standby_Focus_Rev_Allowed
+	rjmp Brake_Focus
+
+; Реверс разрешен -> проверяем прямое вращение
+Standby_Focus_Rev_Allowed: 
+	; Сравниваем показания АЦП с максимумом
+	cpi ADC_L0, 0b11111110 ; Compare
+	brne Standby_Focus_For_Allowed
+	cpi ADC_H0, 0b00000011
+	brne Standby_Focus_For_Allowed
+	rjmp Brake_Focus
+	
+; Прямое вращение разрешено
+Standby_Focus_For_Allowed: 
+	rjmp Zoom_control	
+	
+Brake_Focus:  
+	set
+	bld tempL, 1
+	bld tempL, 0
+	rjmp Zoom_control
+;***************************************************************
+
+; Зум	
+Zoom_control:
+	sbrc tempH, 2
+	rjmp Zoom_L_set
+	rjmp Zoom_L_clr
+
+; Младший бит пары 1	
+Zoom_L_set:
+	sbrc tempH, 3
+	rjmp Brake_Zoom
+	rjmp Reverse_Zoom
+
+; Младший бит пары 0	
+Zoom_L_clr:
+	sbrc tempH, 1
+	rjmp Forward_Zoom
+	rjmp Standby_Zoom
+
+
+Reverse_Zoom:
+	; Сравниваем показания АЦП с минимумом
+	cpi ADC_L1, 0b00000001 ; Compare
+	brne Reverse_Zoom_Allowed
+	cpi ADC_H1, 0b00000000
+	brne Reverse_Zoom_Allowed
+	rjmp Brake_Zoom
+
+; Реверс разрешен
+Reverse_Zoom_Allowed: 
+	rjmp Control_PORTB
+
+Forward_Zoom:
+	; Сравниваем показания АЦП с максимумом
+	cpi ADC_L1, 0b11111110 ; Compare
+	brne Forward_Zoom_Allowed
+	cpi ADC_H1, 0b00000011
+	brne Forward_Zoom_Allowed
+	rjmp Brake_Zoom
+
+; Прямое вращение разрешено
+Forward_Zoom_Allowed: 
+	rjmp Control_PORTB
+
+Standby_Zoom:
+	; Сравниваем показания АЦП с минимумом
+	cpi ADC_L1, 0b00000001 ; Compare
+	brne Standby_Zoom_Rev_Allowed
+	cpi ADC_H1, 0b00000000
+	brne Standby_Zoom_Rev_Allowed
+	rjmp Brake_Zoom
+
+; Реверс разрешен -> проверяем прямое вращение
+Standby_Zoom_Rev_Allowed: 
+	; Сравниваем показания АЦП с максимумом
+	cpi ADC_L1, 0b11111110 ; Compare
+	brne Standby_Zoom_For_Allowed
+	cpi ADC_H1, 0b00000011
+	brne Standby_Zoom_For_Allowed
+	rjmp Brake_Zoom
+	
+; Прямое вращение разрешено
+Standby_Zoom_For_Allowed: 
+	rjmp Control_PORTB	
+	
+Brake_Zoom:  
+	set
+	bld tempH, 2
+	bld tempH, 3
+	rjmp Control_PORTB
+
+; Выводим на порт	
+Control_PORTB:
+	add tempH, tempL
+	out PORTB, tempH
 
 ; Формирование посылки для отправления
 Transmit:
@@ -295,7 +468,7 @@ Checksum_calc:
 
 ; Добавление контрольной суммы в последний байт
 Checksum_end:
-	com tempH ; One’s Complement; Rd <- $FF - Rd
+	com tempH ; One’s Complement; Rd <- $FF - Rd (Контрольная сумма рассчитывается, как дополнение до нуля суммы всех байт посылки)
 	
 	ldi YL, LOW(Buffer_Transmit); Load Y register low буфер передачи
 	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
@@ -330,7 +503,7 @@ Wait_transmit:
 	rjmp Wait_transmit
 
 End:
-	clr FLAG_Register
+	andi FLAG_Register, 0b00010000
 	rjmp Start
 ;***** MAIN PROGRAM END ****************************************
 
@@ -356,6 +529,8 @@ Change_channel:
 	out ADMUX, tempL ; Изменить № канала АЦП 
     clt
 	bld FLAG_Register, FLAG_ADC_Ready ; Сброс готовности АЦП
+	clt
+	bld FLAG_Register, FLAG_ADC_Delay ; Сброс задержки измерения АЦП
 	ret
 
 Channel_ADC0:      
@@ -364,12 +539,11 @@ Channel_ADC0:
 ;***************************************************************
 
 ; Подпрограмма запуска преобразования АЦП
-start_ADC:  
-	ldi tempL,(1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1) ; Вкл. АЦП, разрешение прерывания по окончании преобразования АЦП, предделитель CLK/64 (172.8 кГц)
-	out ADCSR,tempL
-	ldi tempL,(1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADSC) ; Запуск преобразования
-	out ADCSR,tempL
-	ret 
+start_ADC_conversion:  
+	; Включение АЦП
+	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADSC) ; Запуск преобразования
+	out ADCSR, tempL
+	rjmp Wait_ADC    
 
 ;***** INTERRUPTS **********************************************
 ; Прерывание по окончанию приема по USART
@@ -552,7 +726,7 @@ Transmit_popRegs_exit:
 	reti
 ;***************************************************************
 
-; Прерывание таймера по совпадению канала A
+; Прерывание таймера T1 по совпадению канала A
 Time_OUT:
 	; Сохранение регистров в стэк
 	push tempL
@@ -659,4 +833,29 @@ ADC_change_reg:
 	mov ADC_L1, ADC_L0
 	mov ADC_H1, ADC_H0
 	ret
+;***************************************************************
+
+; Прерывание таймера T0 по переполнению
+T0_Overflow: 
+; Сохранение регистров в стэк 
+	push tempL
+	push tempH
+	in tempL, SREG
+	push tempL
+
+; Сравнение счетчика переполненй с VALUE_TimeOUT_T0            
+	inc TimeOUT_T0
+	cpi TimeOUT_T0, VALUE_TimeOUT_T0 
+	brne T0_popRegs_exit
+	; Установка флага прошествия 50 мс с момента последнего АЦП преобразования
+	ori FLAG_Register, (1<<FLAG_ADC_Delay)
+	clr TimeOUT_T0
+		   
+; Загрузка регистров из стэка
+T0_popRegs_exit:	
+	pop    tempL
+	out    SREG,tempL
+	pop    tempH 
+	pop    tempL
+	reti
 ;***************************************************************

@@ -1,8 +1,9 @@
 
-AVRASM ver. 2.2.7  D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm Wed Nov 14 01:35:36 2018
+AVRASM ver. 2.2.7  D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm Sat Nov 17 03:17:32 2018
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc'
 D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(20): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16Adef.inc'
+D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(27): warning: Register r30 already defined by the .DEF directive
 D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(33): warning: Register r26 already defined by the .DEF directive
 D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm(38): warning: Register r27 already defined by the .DEF directive
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.2.150\avrasm\inc\m16adef.inc'
@@ -942,16 +943,16 @@ D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm
                                  ;***** REGISTER VARIABLES **************************************
                                  .def tempL = R16
                                  .def tempH = R17
-                                  ; .def TimeOUT_T0 = R4 ; Счетчик переполний Т0
+                                 .def TimeOUT_T0 = R30 ; Счетчик переполний Т0
                                  .def Counter_Receive = R18 ; Счетчик принятых байт
                                  .def Counter_Transmit = R19 ; Счетчик переданных байт
                                  .def Checksum_Receive = R20 ; Контрольная сумма принятых байт
                                   ; .def Checksum_Transmit = R21 ; Контрольная сумма переданных байт
                                  .def FLAG_Register = R21 ; Регистр флагов
                                  .def Counter_ADC = R26 ; Счетчик числа преобразований при их усреднении АЦП
-                                 .def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0
+                                 .def ADC_H0 = R22 ; Пара регистров для хранения и усреднения результата преобразования АЦП0 (фокус)
                                  .def ADC_L0 = R23
-                                 .def ADC_H1 = R24 ; Пара регистров для хранения и усреднения результата преобразования АЦП1
+                                 .def ADC_H1 = R24 ; Пара регистров для хранения и усреднения результата преобразования АЦП1 (зум)
                                  .def ADC_L1 = R25
                                  .def Number = R27 ; Номер канала АЦП
                                  ;***** FLAGS ***************************************************
@@ -959,10 +960,11 @@ D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm
                                  .equ FLAG_Transmit = 1 ; Флаг завершения передачи
                                  .equ FLAG_ADC_Ready = 2 ; Флаг завершения замера АЦП
                                  .equ FLAG_ADC_Channel_N = 3 ; Флаг изменения канала АЦП: 0 -> 0-й канал (Потенциометр 1); 1 -> 1-й канал (Потенциометр 1)
+                                 .equ FLAG_ADC_Delay = 4 ; Флаг переполненния T0 -> позволяет реализовать измерение АЦП каждые 50 мс
                                  ;***** CONSTANTS ***********************************************
                                  .equ VALUE_TR = 7 ; Константа, определяющая количество байт, передаваемом модулем USART (Адркс МК; состояние порта, АЦП1 (2 байта), АЦП0 (2 байта), КС)
                                  .equ VALUE_REC = 3 ; Константа, определяющая количество байт, принимаемом модулем USART (Адрес МК; зум или фокус; команда управления)
-                                 .equ VALUE_TimeOUT_T0 = 42 ; Таймаут (1024*256/11059200*Xotc=1cek => Xotc=42 => 42 переполнения -> 1 секунда)
+                                 .equ VALUE_TimeOUT_T0 = 2 ; Таймаут (1024*256/11059200*Xotc=0.05cek => Xotc=2 => 2 переполнения -> 50 мс)
                                  .equ VALUE_N_ADC = 8 ; Количество преобразований АЦП для одного усреднения
                                  .equ VALUE_SHIFT = 3 ; Сдвиг для среднего арифметического результатов измерений АЦП (2^(VALUE_SHIFT) = VALUE_N_ADC)
                                  .equ PIN_FLOW_CTRL = 2 ; Пин flow control
@@ -990,24 +992,24 @@ D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm
                                  .org ICP1addr; =$00A	;Input Capture1 Interrupt Vector Address
 00000a 9518                      reti
                                  .org OC1Aaddr; =$00C	;Output Compare1A Interrupt Vector Address
-00000c c11f                      rjmp   Time_OUT
+00000c c171                      rjmp   Time_OUT
                                  .org OC1Baddr; =$00E	;Output Compare1B Interrupt Vector Address
 00000e 9518                      reti
                                  .org OVF1addr; =$010	;Overflow1 Interrupt Vector Address
 000010 9518                      reti
                                  .org OVF0addr; =$012	;Overflow0 Interrupt Vector Address
-                                 ; rjmp   T0_Overflow 
-000012 9518                      reti
+000012 c1a9                      rjmp   T0_Overflow 
+000013 9518                      reti
                                  .org SPIaddr;  =$014	;SPI Interrupt Vector Address
 000014 9518                      reti
                                  .org URXCaddr; =$016	;UART Receive Complete Interrupt Vector Address
-000016 c0af                      rjmp   Receive_Complete
+000016 c101                      rjmp   Receive_Complete
                                  .org UDREaddr; =$018	;UART Data Register Empty Interrupt Vector Address
-000018 c0ea                      rjmp   UDR_empty
+000018 c13c                      rjmp   UDR_empty
                                  .org UTXCaddr; =$01A	;UART Transmit Complete Interrupt Vector Address
-00001a c0f7                      rjmp   Transmit_Complete
+00001a c149                      rjmp   Transmit_Complete
                                  .org ADCCaddr; =$01C	;ADC Interrupt Vector Address
-00001c c126                      rjmp   ADC_Complete
+00001c c178                      rjmp   ADC_Complete
                                  .org ERDYaddr; =$01E	;EEPROM Interrupt Vector Address
 00001e 9518                      reti
                                  .org ACIaddr;  =$020	;Analog Comparator Interrupt Vector Address
@@ -1074,7 +1076,7 @@ D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm
 000044 e000                      	ldi tempL, 0 ; Вход - ADC0, (ldi tempL, 1 -> ADC1)
 000045 9300 0007                 	sts ADMUX, tempL ; REFS1 = 0, REFS0 = 0 => внешний ИОН, подключенный к AREF
                                  	       
-000047 e006                      	ldi tempL, (1<<ADPS2)|(1<<ADPS1) ; Режим работы предделителя тактовой частоты: 110 - CLK/64
+000047 e80e                      	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1) ; Вкл. АЦП, разрешение прерывания по окончании преобразования АЦП, предделитель CLK/64 (172.8 кГц)
 000048 b906                      	out ADCSR, tempL
                                  
                                  ; Инициализация таймера TCNT0
@@ -1129,454 +1131,652 @@ D:\School and University\AVR_kurs\Re_copy\Camera_control\Camera_control\main.asm
 00006c 2744                      	clr Checksum_Receive
 00006d 2733                      	clr Counter_Transmit
 00006e 2755                      	clr FLAG_Register
-                                 	; clr TimeOUT_T0
-00006f 2766                      	clr ADC_H0
-000070 2777                      	clr ADC_L0
-000071 2788                      	clr ADC_H1
-000072 2799                      	clr ADC_L1
-000073 27aa                      	clr Counter_ADC
+00006f 27ee                      	clr TimeOUT_T0
+000070 2766                      	clr ADC_H0
+000071 2777                      	clr ADC_L0
+000072 2788                      	clr ADC_H1
+000073 2799                      	clr ADC_L1
+000074 27aa                      	clr Counter_ADC
+                                 
+                                 	; Устанавливаем в 1 флаг задержки измерения АЦП
+000075 6150                      	ori FLAG_Register, (1<<FLAG_ADC_Delay)
                                  
                                  	; Разрешаем прерывания
-000074 9478                      	sei
+000076 9478                      	sei
                                  ;***************************************************************
                                  
                                  ;***** MAIN PROGRAM ********************************************
-                                 Start:
-                                 	; Ожидание приема запроса
-000075 fd50                      	sbrc FLAG_Register, FLAG_Receive ; Skip if Bit in Register Cleared
-000076 c001                      	rjmp Received
-000077 cffd                      	rjmp Start
-                                 
-                                 ; Запрос принят
-                                 Received: 
-                                 	; Загрузка адреса устройства из буфера приема
-000078 9109                      	ld tempL, Y+ ; Load Indirect
-                                 	; Загружаем информационный байт из буфера приема
-000079 9109                      	ld tempL, Y+
-                                 	; Очищаем все кроме четырех младших битов
-00007a 700f                      	andi tempL, 0b00001111
-                                 	; Выводим на порт
-00007b bb08                      	out PORTB, tempL
-                                 	; Включение АЦП, разрешение прерывания по окончанию считывания, начало замера
-00007c c044                      	rjmp start_ADC
+                                 Start_main:
+                                 	; Включение счетчика T0
+000077 e005                      	ldi tempL, (1<<CS02)|(1<<CS00) ; Частота TCNT0: Clk/1024, (CS02 = 1, CS01 = 0, CS00 = 1)
+000078 bf03                      	out TCCR0, tempL ; Включение счетчика
+                                 	
+                                 Start:	
+                                 ; Запуск АЦП	
+000079 ff54                      	sbrs FLAG_Register, FLAG_ADC_Delay
+00007a c009                      	rjmp With_ADC_data
+00007b c099                      	rjmp start_ADC_conversion	
                                  
                                  ; Ожидание окончания замеров
                                  Wait_ADC:
-00007d fd52                      	sbrc FLAG_Register, FLAG_ADC_Ready
-00007e c001                      	rjmp Change_ch_ADC
-00007f cffd                      	rjmp Wait_ADC
+00007c fd52                      	sbrc FLAG_Register, FLAG_ADC_Ready
+00007d c001                      	rjmp Change_ch_ADC
+00007e cffd                      	rjmp Wait_ADC
                                  
                                  ; Запись данных с другого канала
                                  Change_ch_ADC:
-000080 c030                      	rjmp Change_N_ADC_channel
-000081 c03f                      	rjmp start_ADC
+00007f c083                      	rjmp Change_N_ADC_channel
+000080 c094                      	rjmp start_ADC_conversion
                                  
                                  ; Ожидание окончания замеров данных с другого канала	
                                  Wait_ADC_ch_switch:	
-000082 fd52                      	sbrc FLAG_Register, FLAG_ADC_Ready
-000083 c001                      	rjmp Transmit
-000084 cffd                      	rjmp Wait_ADC_ch_switch
+000081 fd52                      	sbrc FLAG_Register, FLAG_ADC_Ready
+000082 c001                      	rjmp With_ADC_data
+000083 cffd                      	rjmp Wait_ADC_ch_switch
+                                 
+                                 ; Дальнейшее выполнение программы с наличием данных АЦП по двум каналам	
+                                 With_ADC_data:
+                                 	; Ожидание приема команды
+000084 fd50                      	sbrc FLAG_Register, FLAG_Receive ; Skip if Bit in Register Cleared
+000085 c001                      	rjmp Received
+000086 cff2                      	rjmp Start ; Обновляем данные АЦП
+                                 
+                                 ; Команда принята
+                                 Received: 
+                                 	; Загрузка адреса устройства из буфера приема
+000087 9109                      	ld tempL, Y+ ; Load Indirect
+                                 	; Загружаем информационный байт из буфера приема
+000088 9109                      	ld tempL, Y+
+                                 	; Очищаем все кроме четырех младших битов
+000089 700f                      	andi tempL, 0b00001111
+00008a 2f10                      	mov tempH, tempL
+                                 	
+00008b 7003                      	andi tempL, 0b00000011 ; Управление фокусом
+00008c 701c                      	andi tempH, 0b00001100 ; Управление зумом
+                                 ;***************************************************************
+                                 
+                                 ;****************************
+                                 ;* IN1/3   IN2/4    Mode    *
+                                 ;****************************
+                                 ;*   H       L     Forward  *
+                                 ;*   L       H     Reverse  *
+                                 ;*   H       H      Brake   *
+                                 ;*   L       L     Standby  *
+                                 ;****************************
+                                 	
+                                 ; Управление двигателями в зависимости от текущего состояния (описывается АЦП) 
+                                 ; Фокус	
+                                 Focus_control:	
+00008d fd00                      	sbrc tempL, 0
+00008e c001                      	rjmp Focus_L_set
+00008f c003                      	rjmp Focus_L_clr
+                                 
+                                 ; Младший бит пары 1	
+                                 Focus_L_set:
+000090 fd01                      	sbrc tempL, 1
+000091 c01b                      	rjmp Brake_Focus
+000092 c003                      	rjmp Reverse_Focus
+                                 
+                                 ; Младший бит пары 0	
+                                 Focus_L_clr:
+000093 fd01                      	sbrc tempL, 1
+000094 c007                      	rjmp Forward_Focus
+000095 c00c                      	rjmp Standby_Focus
+                                 
+                                 
+                                 Reverse_Focus:
+                                 	; Сравниваем показания АЦП с минимумом
+000096 3071                      	cpi ADC_L0, 0b00000001 ; Compare
+000097 f419                      	brne Reverse_Focus_Allowed
+000098 3060                      	cpi ADC_H0, 0b00000000
+000099 f409                      	brne Reverse_Focus_Allowed
+00009a c012                      	rjmp Brake_Focus
+                                 
+                                 ; Реверс разрешен
+                                 Reverse_Focus_Allowed: 
+00009b c015                      	rjmp Zoom_control
+                                 
+                                 Forward_Focus:
+                                 	; Сравниваем показания АЦП с максимумом
+00009c 3f7e                      	cpi ADC_L0, 0b11111110 ; Compare
+00009d f419                      	brne Forward_Focus_Allowed
+00009e 3063                      	cpi ADC_H0, 0b00000011
+00009f f409                      	brne Forward_Focus_Allowed
+0000a0 c00c                      	rjmp Brake_Focus
+                                 
+                                 ; Прямое вращение разрешено
+                                 Forward_Focus_Allowed: 
+0000a1 c00f                      	rjmp Zoom_control
+                                 
+                                 Standby_Focus:
+                                 	; Сравниваем показания АЦП с минимумом
+0000a2 3071                      	cpi ADC_L0, 0b00000001 ; Compare
+0000a3 f419                      	brne Standby_Focus_Rev_Allowed
+0000a4 3060                      	cpi ADC_H0, 0b00000000
+0000a5 f409                      	brne Standby_Focus_Rev_Allowed
+0000a6 c006                      	rjmp Brake_Focus
+                                 
+                                 ; Реверс разрешен -> проверяем прямое вращение
+                                 Standby_Focus_Rev_Allowed: 
+                                 	; Сравниваем показания АЦП с максимумом
+0000a7 3f7e                      	cpi ADC_L0, 0b11111110 ; Compare
+0000a8 f419                      	brne Standby_Focus_For_Allowed
+0000a9 3063                      	cpi ADC_H0, 0b00000011
+0000aa f409                      	brne Standby_Focus_For_Allowed
+0000ab c001                      	rjmp Brake_Focus
+                                 	
+                                 ; Прямое вращение разрешено
+                                 Standby_Focus_For_Allowed: 
+0000ac c004                      	rjmp Zoom_control	
+                                 	
+                                 Brake_Focus:  
+0000ad 9468                      	set
+0000ae f901                      	bld tempL, 1
+0000af f900                      	bld tempL, 0
+0000b0 c000                      	rjmp Zoom_control
+                                 ;***************************************************************
+                                 
+                                 ; Зум	
+                                 Zoom_control:
+0000b1 fd12                      	sbrc tempH, 2
+0000b2 c001                      	rjmp Zoom_L_set
+0000b3 c003                      	rjmp Zoom_L_clr
+                                 
+                                 ; Младший бит пары 1	
+                                 Zoom_L_set:
+0000b4 fd13                      	sbrc tempH, 3
+0000b5 c01b                      	rjmp Brake_Zoom
+0000b6 c003                      	rjmp Reverse_Zoom
+                                 
+                                 ; Младший бит пары 0	
+                                 Zoom_L_clr:
+0000b7 fd11                      	sbrc tempH, 1
+0000b8 c007                      	rjmp Forward_Zoom
+0000b9 c00c                      	rjmp Standby_Zoom
+                                 
+                                 
+                                 Reverse_Zoom:
+                                 	; Сравниваем показания АЦП с минимумом
+0000ba 3091                      	cpi ADC_L1, 0b00000001 ; Compare
+0000bb f419                      	brne Reverse_Zoom_Allowed
+0000bc 3080                      	cpi ADC_H1, 0b00000000
+0000bd f409                      	brne Reverse_Zoom_Allowed
+0000be c012                      	rjmp Brake_Zoom
+                                 
+                                 ; Реверс разрешен
+                                 Reverse_Zoom_Allowed: 
+0000bf c015                      	rjmp Control_PORTB
+                                 
+                                 Forward_Zoom:
+                                 	; Сравниваем показания АЦП с максимумом
+0000c0 3f9e                      	cpi ADC_L1, 0b11111110 ; Compare
+0000c1 f419                      	brne Forward_Zoom_Allowed
+0000c2 3083                      	cpi ADC_H1, 0b00000011
+0000c3 f409                      	brne Forward_Zoom_Allowed
+0000c4 c00c                      	rjmp Brake_Zoom
+                                 
+                                 ; Прямое вращение разрешено
+                                 Forward_Zoom_Allowed: 
+0000c5 c00f                      	rjmp Control_PORTB
+                                 
+                                 Standby_Zoom:
+                                 	; Сравниваем показания АЦП с минимумом
+0000c6 3091                      	cpi ADC_L1, 0b00000001 ; Compare
+0000c7 f419                      	brne Standby_Zoom_Rev_Allowed
+0000c8 3080                      	cpi ADC_H1, 0b00000000
+0000c9 f409                      	brne Standby_Zoom_Rev_Allowed
+0000ca c006                      	rjmp Brake_Zoom
+                                 
+                                 ; Реверс разрешен -> проверяем прямое вращение
+                                 Standby_Zoom_Rev_Allowed: 
+                                 	; Сравниваем показания АЦП с максимумом
+0000cb 3f9e                      	cpi ADC_L1, 0b11111110 ; Compare
+0000cc f419                      	brne Standby_Zoom_For_Allowed
+0000cd 3083                      	cpi ADC_H1, 0b00000011
+0000ce f409                      	brne Standby_Zoom_For_Allowed
+0000cf c001                      	rjmp Brake_Zoom
+                                 	
+                                 ; Прямое вращение разрешено
+                                 Standby_Zoom_For_Allowed: 
+0000d0 c004                      	rjmp Control_PORTB	
+                                 	
+                                 Brake_Zoom:  
+0000d1 9468                      	set
+0000d2 f912                      	bld tempH, 2
+0000d3 f913                      	bld tempH, 3
+0000d4 c000                      	rjmp Control_PORTB
+                                 
+                                 ; Выводим на порт	
+                                 Control_PORTB:
+0000d5 0f10                      	add tempH, tempL
+0000d6 bb18                      	out PORTB, tempH
                                  
                                  ; Формирование посылки для отправления
                                  Transmit:
                                  	; Загрузка адреса начала буфера отправки в адресный регистр
-000085 e6c8                      	ldi YL, LOW(Buffer_Transmit)
-000086 e0d0                      	ldi YH, HIGH(Buffer_Transmit)
+0000d7 e6c8                      	ldi YL, LOW(Buffer_Transmit)
+0000d8 e0d0                      	ldi YH, HIGH(Buffer_Transmit)
                                  
                                  	; Запись адреса устройства в первый байт
-000087 e005                      	ldi tempL, MCU_Address
-000088 9309                      	st Y+, tempL
+0000d9 e005                      	ldi tempL, MCU_Address
+0000da 9309                      	st Y+, tempL
                                  
                                  	; Запись состояния портов ввода/вывода во второй байт
-000089 b308                      	in tempL, PORTB
-00008a 9309                      	st Y+, tempL
+0000db b308                      	in tempL, PORTB
+0000dc 9309                      	st Y+, tempL
                                  
                                  	; Запись результата измерения АЦП (канал 0) в третий и четвертый байты
-00008b 9369                      	st Y+, ADC_H0
-00008c 9379                      	st Y+, ADC_L0
+0000dd 9369                      	st Y+, ADC_H0
+0000de 9379                      	st Y+, ADC_L0
                                  
                                  	; Запись результата измерения АЦП (канал 1) в пятый и шестой байты
-00008d 9389                      	st Y+, ADC_H1
-00008e 9399                      	st Y+, ADC_L1
+0000df 9389                      	st Y+, ADC_H1
+0000e0 9399                      	st Y+, ADC_L1
                                  
-00008f e037                      	ldi Counter_Transmit, VALUE_TR
-000090 2711                      	clr tempH
+0000e1 e037                      	ldi Counter_Transmit, VALUE_TR
+0000e2 2711                      	clr tempH
                                  
                                  ; Вычисление контрольной суммы
                                  Checksum_calc:
-000091 910a                      	ld tempL, -Y ; Пред. декремент
-000092 0f10                      	add tempH, tempL
-000093 953a                      	dec Counter_Transmit
-000094 3031                      	cpi Counter_Transmit, 1
-000095 f009                      	breq Checksum_end
-000096 cffa                      	rjmp Checksum_calc
+0000e3 910a                      	ld tempL, -Y ; Пред. декремент
+0000e4 0f10                      	add tempH, tempL
+0000e5 953a                      	dec Counter_Transmit
+0000e6 3031                      	cpi Counter_Transmit, 1
+0000e7 f009                      	breq Checksum_end
+0000e8 cffa                      	rjmp Checksum_calc
                                  
                                  ; Добавление контрольной суммы в последний байт
                                  Checksum_end:
-000097 9510                      	com tempH ; One’s Complement; Rd <- $FF - Rd
+0000e9 9510                      	com tempH ; One’s Complement; Rd <- $FF - Rd (Контрольная сумма рассчитывается, как дополнение до нуля суммы всех байт посылки)
                                  	
-000098 e6c8                      	ldi YL, LOW(Buffer_Transmit); Load Y register low буфер передачи
-000099 e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
-00009a e006                      	ldi tempL, VALUE_TR - 1
-00009b 0fc0                      	add YL, tempL
-00009c 2700                      	clr tempL
-00009d 1fd0                      	adc YH, tempL
-00009e 8318                      	st Y, tempH ; Store Checksum to SRAM (7 байт посылки)
+0000ea e6c8                      	ldi YL, LOW(Buffer_Transmit); Load Y register low буфер передачи
+0000eb e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
+0000ec e006                      	ldi tempL, VALUE_TR - 1
+0000ed 0fc0                      	add YL, tempL
+0000ee 2700                      	clr tempL
+0000ef 1fd0                      	adc YH, tempL
+0000f0 8318                      	st Y, tempH ; Store Checksum to SRAM (7 байт посылки)
                                  	
                                  	; Flow control на передачу
-00009f 9892                      	cbi PORTD, PIN_FLOW_CTRL
+0000f1 9892                      	cbi PORTD, PIN_FLOW_CTRL
                                  
                                  	; Заполнение регистра данных USART
-0000a0 e6c8                      	ldi YL, LOW(Buffer_Transmit); Load Y register low буфер передачи
-0000a1 e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
-0000a2 9109                      	ld tempL, Y+ ; Пост. инкремент
-0000a3 b90c                      	out UDR, tempL
+0000f2 e6c8                      	ldi YL, LOW(Buffer_Transmit); Load Y register low буфер передачи
+0000f3 e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
+0000f4 9109                      	ld tempL, Y+ ; Пост. инкремент
+0000f5 b90c                      	out UDR, tempL
                                  
                                  	; Разрешение прерывания по окончанию приема и опустошению регистра данных
-0000a4 e208                      	ldi tempL, (1<<TXEN)|(1<<UDRIE)|(0<<UCSZ2) ; UCSZ2 = 0, UCSZ1 = 1, UCSZ0 = 0 - 7 bit
-0000a5 b90a                      	out UCSRB, tempL
-0000a6 e200                      	ldi tempL, UCSRC
-0000a7 9468                      	set ; T <- 1
-0000a8 f902                      	bld tempL, UCSZ1 ; Bit load from T to Register: Rd(b) <- T 
-0000a9 94e8                      	clt ; T <- 0
-0000aa f901                      	bld tempL, UCSZ0 ; Bit load from T to Register: Rd(b) <- T 
-0000ab bd00                      	out UCSRC, tempL ; 7 bit 
+0000f6 e208                      	ldi tempL, (1<<TXEN)|(1<<UDRIE)|(0<<UCSZ2) ; UCSZ2 = 0, UCSZ1 = 1, UCSZ0 = 0 - 7 bit
+0000f7 b90a                      	out UCSRB, tempL
+0000f8 e200                      	ldi tempL, UCSRC
+0000f9 9468                      	set ; T <- 1
+0000fa f902                      	bld tempL, UCSZ1 ; Bit load from T to Register: Rd(b) <- T 
+0000fb 94e8                      	clt ; T <- 0
+0000fc f901                      	bld tempL, UCSZ0 ; Bit load from T to Register: Rd(b) <- T 
+0000fd bd00                      	out UCSRC, tempL ; 7 bit 
                                  
                                  Wait_transmit:
-0000ac fd51                      	sbrc FLAG_Register, FLAG_Transmit 
-0000ad c001                      	rjmp End
-0000ae cffd                      	rjmp Wait_transmit
+0000fe fd51                      	sbrc FLAG_Register, FLAG_Transmit 
+0000ff c001                      	rjmp End
+000100 cffd                      	rjmp Wait_transmit
                                  
                                  End:
-0000af 2755                      	clr FLAG_Register
-0000b0 cfc4                      	rjmp Start
+000101 7150                      	andi FLAG_Register, 0b00010000
+000102 cf76                      	rjmp Start
                                  ;***** MAIN PROGRAM END ****************************************
                                  
                                  ;***************************************************************
                                  ; Подпрограмма смены канала преобразования
                                  Change_N_ADC_channel:   	
-0000b1 94e8                      	clt
-0000b2 ff53                          sbrs  FLAG_Register, FLAG_ADC_Channel_N ; Skip if Bit in Register is Set
-0000b3 9468                      	set
-0000b4 f953                          bld   FLAG_Register, FLAG_ADC_Channel_N
+000103 94e8                      	clt
+000104 ff53                          sbrs  FLAG_Register, FLAG_ADC_Channel_N ; Skip if Bit in Register is Set
+000105 9468                      	set
+000106 f953                          bld   FLAG_Register, FLAG_ADC_Channel_N
                                  
-0000b5 b107                          in tempL, ADMUX
-0000b6 7e00                          andi tempL, 0b11100000
+000107 b107                          in tempL, ADMUX
+000108 7e00                          andi tempL, 0b11100000
                                  
-0000b7 ff53                      	sbrs FLAG_Register, FLAG_ADC_Channel_N
-0000b8 c006                      	rjmp Channel_ADC0
+000109 ff53                      	sbrs FLAG_Register, FLAG_ADC_Channel_N
+00010a c008                      	rjmp Channel_ADC0
                                  	
                                  Channel_ADC1:	
-0000b9 e0b1                      	ldi Number, 1 ; 1-й канал (ADC1)
-0000ba 6002                      	ori tempL, (0<<MUX0)|(1<<MUX1)
+00010b e0b1                      	ldi Number, 1 ; 1-й канал (ADC1)
+00010c 6002                      	ori tempL, (0<<MUX0)|(1<<MUX1)
                                  
                                  Change_channel:	
-0000bb b907                      	out ADMUX, tempL ; Изменить № канала АЦП 
-0000bc 94e8                          clt
-0000bd f952                      	bld FLAG_Register, FLAG_ADC_Ready ; Сброс готовности АЦП
-0000be 9508                      	ret
+00010d b907                      	out ADMUX, tempL ; Изменить № канала АЦП 
+00010e 94e8                          clt
+00010f f952                      	bld FLAG_Register, FLAG_ADC_Ready ; Сброс готовности АЦП
+000110 94e8                      	clt
+000111 f954                      	bld FLAG_Register, FLAG_ADC_Delay ; Сброс задержки измерения АЦП
+000112 9508                      	ret
                                  
                                  Channel_ADC0:      
-0000bf e0b0                      	ldi Number, 0 ; 0-й канал (ADC0)
-0000c0 cffa                      	rjmp Change_channel
+000113 e0b0                      	ldi Number, 0 ; 0-й канал (ADC0)
+000114 cff8                      	rjmp Change_channel
                                  ;***************************************************************
                                  
                                  ; Подпрограмма запуска преобразования АЦП
-                                 start_ADC:  
-0000c1 e80e                      	ldi tempL,(1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1) ; Вкл. АЦП, разрешение прерывания по окончании преобразования АЦП, предделитель CLK/64 (172.8 кГц)
-0000c2 b906                      	out ADCSR,tempL
-0000c3 ec0e                      	ldi tempL,(1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADSC) ; Запуск преобразования
-0000c4 b906                      	out ADCSR,tempL
-0000c5 9508                      	ret 
+                                 start_ADC_conversion:  
+                                 	; Включение АЦП
+000115 ec0e                      	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADSC) ; Запуск преобразования
+000116 b906                      	out ADCSR, tempL
+000117 cf64                      	rjmp Wait_ADC    
                                  
                                  ;***** INTERRUPTS **********************************************
                                  ; Прерывание по окончанию приема по USART
                                  Receive_complete:
                                  	; Сохранение регистров в стэк
-0000c6 930f                      	push tempL
-0000c7 931f                      	push tempH
-0000c8 b70f                      	in tempL, SREG
-0000c9 930f                      	push tempL
+000118 930f                      	push tempL
+000119 931f                      	push tempH
+00011a b70f                      	in tempL, SREG
+00011b 930f                      	push tempL
                                  
                                  ; Загрузка принятой информации из регистра данных
                                  Receive_UDR_load:
-0000ca 9100 000c                 	lds tempL, UDR
+00011c 9100 000c                 	lds tempL, UDR
                                  
                                  ; Проверка статусного регистра USART на наличие ошибок
                                  Receive_err_check:
-0000cc 9110 000b                 	lds tempH, UCSRA ; Загрузка регистра состояния USART в tempH 
-0000ce 711c                      	andi tempH, (1<<FE)|(1<<DOR)|(1<<PE)
-0000cf f009                      	breq Receive_no_errors
-0000d0 c02d                      	rjmp Receive_popRegs_exit
+00011e 9110 000b                 	lds tempH, UCSRA ; Загрузка регистра состояния USART в tempH 
+000120 711c                      	andi tempH, (1<<FE)|(1<<DOR)|(1<<PE)
+000121 f009                      	breq Receive_no_errors
+000122 c02d                      	rjmp Receive_popRegs_exit
                                  
                                  ; При отсутствии ошибок приема
                                  Receive_no_errors:
-0000d1 9309                      	st Y+, tempL
-0000d2 9523                      	inc Counter_Receive
-0000d3 2f12                      	mov tempH, Counter_Receive
-0000d4 3011                      	cpi tempH, 0x01	
-0000d5 f031                      	breq Receive_address
-0000d6 3012                      	cpi tempH, 0x02
-0000d7 f091                      	breq Receive_first_byte
-0000d8 0f40                      	add Checksum_Receive, tempL
-0000d9 3013                      	cpi tempH, VALUE_REC
-0000da f089                      	breq Receive_checksum
-0000db c022                      	rjmp Receive_popRegs_exit
+000123 9309                      	st Y+, tempL
+000124 9523                      	inc Counter_Receive
+000125 2f12                      	mov tempH, Counter_Receive
+000126 3011                      	cpi tempH, 0x01	
+000127 f031                      	breq Receive_address
+000128 3012                      	cpi tempH, 0x02
+000129 f091                      	breq Receive_first_byte
+00012a 0f40                      	add Checksum_Receive, tempL
+00012b 3013                      	cpi tempH, VALUE_REC
+00012c f089                      	breq Receive_checksum
+00012d c022                      	rjmp Receive_popRegs_exit
                                  
                                  ; При приеме первого байта (адрес МК)
                                  Receive_address:
                                  	; Проверка адреса
-0000dc 3005                      	cpi tempL, MCU_Address
-0000dd f501                      	brne Receive_popRegs_exit
+00012e 3005                      	cpi tempL, MCU_Address
+00012f f501                      	brne Receive_popRegs_exit
                                  	
                                  	; Сброс бита межпроцессорного обмена
-0000de b10b                      	in tempL, UCSRA
-0000df 94e8                      	clt
-0000e0 f900                      	bld tempL, MPCM
-0000e1 b90b                      	out UCSRA, tempL ; Сброс бита мультипроцессорного обмена (Logical OR Register and Constant Rd <- Rd v K)
+000130 b10b                      	in tempL, UCSRA
+000131 94e8                      	clt
+000132 f900                      	bld tempL, MPCM
+000133 b90b                      	out UCSRA, tempL ; Сброс бита мультипроцессорного обмена (Logical OR Register and Constant Rd <- Rd v K)
                                  
-0000e2 0f40                      	add Checksum_Receive, tempL ; Добавление значения байта в контрольную сумму
-0000e3 b709                      	in tempL, TIMSK
-0000e4 9468                      	set
-0000e5 f904                      	bld tempL, OCIE1A ; Bit load from T to Register: Rd(b) <- T
-0000e6 bf09                      	out TIMSK, tempL ; Разрешаем прерывание по совпадению (канал А)
-0000e7 e009                      	ldi tempL, (1<<WGM12)|(1<<CS10) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
+000134 0f40                      	add Checksum_Receive, tempL ; Добавление значения байта в контрольную сумму
+000135 b709                      	in tempL, TIMSK
+000136 9468                      	set
+000137 f904                      	bld tempL, OCIE1A ; Bit load from T to Register: Rd(b) <- T
+000138 bf09                      	out TIMSK, tempL ; Разрешаем прерывание по совпадению (канал А)
+000139 e009                      	ldi tempL, (1<<WGM12)|(1<<CS10) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
                                                                      ; CS12 = 0, CS11 = 0, CS10 = 1 => CLKi/o /1 (No prescaling)
-0000e8 bd0e                      	out TCCR1B, tempL ; Вкл. счетчика
-0000e9 c014                          rjmp Receive_popRegs_exit
+00013a bd0e                      	out TCCR1B, tempL ; Вкл. счетчика
+00013b c014                          rjmp Receive_popRegs_exit
                                  
                                  ; При приеме первого байта данных
                                  Receive_first_byte:		
-0000ea 0f40                      	add Checksum_Receive, tempL ; Добавление значения байта в контрольную сумму
-0000eb c012                      	rjmp Receive_popRegs_exit
+00013c 0f40                      	add Checksum_Receive, tempL ; Добавление значения байта в контрольную сумму
+00013d c012                      	rjmp Receive_popRegs_exit
                                  
                                  ; Проверка контрольной суммы
                                  Receive_checksum:
-0000ec 9500                      	com tempL ; Инверсия последнего принятого байта
-0000ed 1704                      	cp tempL, Checksum_Receive ; Сравнение контрольных сумм
-0000ee f409                      	brne Receive_end
-0000ef 6051                      	ori FLAG_Register, (1<<FLAG_Receive) ; Установка флага успешного приема данных (Logical OR Register and Constant Rd <- Rd v K)
+00013e 9500                      	com tempL ; Инверсия последнего принятого байта
+00013f 1704                      	cp tempL, Checksum_Receive ; Сравнение контрольных сумм
+000140 f409                      	brne Receive_end
+000141 6051                      	ori FLAG_Register, (1<<FLAG_Receive) ; Установка флага успешного приема данных (Logical OR Register and Constant Rd <- Rd v K)
                                  
                                  ; Окончание приема данных
                                  Receive_end:
                                  	; Запрет прерывания таймера по переполнению канала A
-0000f0 b709                      	in tempL, TIMSK
-0000f1 94e8                      	clt
-0000f2 f904                      	bld tempL, OCIE1A
-0000f3 bf09                      	out TIMSK, tempL ; OCIE1A запретить прерывание
+000142 b709                      	in tempL, TIMSK
+000143 94e8                      	clt
+000144 f904                      	bld tempL, OCIE1A
+000145 bf09                      	out TIMSK, tempL ; OCIE1A запретить прерывание
                                  
-0000f4 e008                      	ldi tempL, (1<<WGM12) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
+000146 e008                      	ldi tempL, (1<<WGM12) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
                                                            ; CS12 = 0, CS11 = 0, CS10 = 0 => Таймер/счетчик остановлен
-0000f5 bd0e                      	out TCCR1B, tempL ; Выкл. счетчика
+000147 bd0e                      	out TCCR1B, tempL ; Выкл. счетчика
                                  	
                                  	; Сброс счетчика
-0000f6 e000                      	ldi tempL, 0x00 
-0000f7 e010                      	ldi tempH, 0x00
-0000f8 bd1d                      	out TCNT1H, tempH 
-0000f9 bd0c                      	out TCNT1L, tempL 
+000148 e000                      	ldi tempL, 0x00 
+000149 e010                      	ldi tempH, 0x00
+00014a bd1d                      	out TCNT1H, tempH 
+00014b bd0c                      	out TCNT1L, tempL 
                                  
                                  	; Обнуление регистров
-0000fa 2722                      	clr Counter_Receive
-0000fb 2744                      	clr Checksum_Receive
+00014c 2722                      	clr Counter_Receive
+00014d 2744                      	clr Checksum_Receive
                                  
                                  	; Установка указателя на начало буфера отправки
-0000fc e6c0                      	ldi YL, LOW(Buffer_Receive) ; Load Y register low буфер приема
-0000fd e0d0                      	ldi YH, HIGH(Buffer_Receive) ; Load Y register high буфер приема
+00014e e6c0                      	ldi YL, LOW(Buffer_Receive) ; Load Y register low буфер приема
+00014f e0d0                      	ldi YH, HIGH(Buffer_Receive) ; Load Y register high буфер приема
                                  
                                  ; Загрузка регистров из стэка
                                  Receive_popRegs_exit:
-0000fe 910f                      	pop tempL
-0000ff bf0f                      	out SREG, tempL
-000100 911f                      	pop tempH
-000101 910f                      	pop tempL
-000102 9518                      	reti
+000150 910f                      	pop tempL
+000151 bf0f                      	out SREG, tempL
+000152 911f                      	pop tempH
+000153 910f                      	pop tempL
+000154 9518                      	reti
                                  ;***************************************************************
                                  
                                  ; Прерывание по опустошению регистра данных
                                  UDR_empty:
                                  	; Сохранение регистров в стэк
-000103 930f                      	push tempL
-000104 b70f                      	in tempL, SREG
-000105 930f                      	push tempL
+000155 930f                      	push tempL
+000156 b70f                      	in tempL, SREG
+000157 930f                      	push tempL
                                  
                                  	; Разрешение прерывания по завершению приема
-000106 e408                      	ldi tempL, (1<<TXEN)|(1<<TXCIE)
-000107 b90a                      	out UCSRB, tempL
+000158 e408                      	ldi tempL, (1<<TXEN)|(1<<TXCIE)
+000159 b90a                      	out UCSRB, tempL
                                  
                                  	; Загрузка адреса начала буфера передачи в адресный регистр
-000108 e6c8                      	ldi YL, LOW(Buffer_Transmit) ; Load Y register low буфер передачи
-000109 e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
-00010a 9109                      	ld tempL, Y+
-00010b 94e8                      	clt
-00010c f950                          bld FLAG_Register, FLAG_Receive ; Флаг принятого запроса -> 0
-00010d b90c                      	out UDR, tempL
+00015a e6c8                      	ldi YL, LOW(Buffer_Transmit) ; Load Y register low буфер передачи
+00015b e0d0                      	ldi YH, HIGH(Buffer_Transmit) ; Load Y register high буфер передачи
+00015c 9109                      	ld tempL, Y+
+00015d 94e8                      	clt
+00015e f950                          bld FLAG_Register, FLAG_Receive ; Флаг принятого запроса -> 0
+00015f b90c                      	out UDR, tempL
                                  
                                  	; Загрузка регистров из стэка
-00010e 910f                      	pop tempL
-00010f bf0f                      	out SREG, tempL
-000110 910f                      	pop tempL
-000111 9518                      	reti
+000160 910f                      	pop tempL
+000161 bf0f                      	out SREG, tempL
+000162 910f                      	pop tempL
+000163 9518                      	reti
                                  ;***************************************************************
                                  
                                  ; Прерывание по завершению передачи
                                  Transmit_complete:
                                  	; Сохранение регистров в стэк
-000112 930f                      	push tempL
-000113 b70f                      	in tempL, SREG
-000114 930f                      	push tempL
-000115 931f                      	push tempH
+000164 930f                      	push tempL
+000165 b70f                      	in tempL, SREG
+000166 930f                      	push tempL
+000167 931f                      	push tempH
                                  
                                  	; Инкремент счетчика отправленных байтов
-000116 9533                      	inc Counter_Transmit
+000168 9533                      	inc Counter_Transmit
                                  
                                  	; Проверка на последний байт
-000117 3037                      	cpi Counter_Transmit, VALUE_TR
-000118 f019                      	breq Transmit_end
+000169 3037                      	cpi Counter_Transmit, VALUE_TR
+00016a f019                      	breq Transmit_end
                                  
                                  	; Отправление данных
-000119 9109                      	ld tempL, Y+
-00011a b90c                      	out UDR, tempL
-00011b c00b                      	rjmp Transmit_popRegs_exit
+00016b 9109                      	ld tempL, Y+
+00016c b90c                      	out UDR, tempL
+00016d c00b                      	rjmp Transmit_popRegs_exit
                                  
                                  ; Завершение передачи
                                  Transmit_end:
-00011c 2733                      	clr Counter_Transmit
+00016e 2733                      	clr Counter_Transmit
                                  
                                  	; Установка режима межпроцессорного обмена
-00011d b10b                      	in tempL, UCSRA
-00011e 9468                      	set
-00011f f900                      	bld tempL, MPCM
-000120 b90b                      	out UCSRA, tempL ; Сброс бита мультипроцессорного обмена (Logical OR Register and Constant Rd <- Rd v K)
+00016f b10b                      	in tempL, UCSRA
+000170 9468                      	set
+000171 f900                      	bld tempL, MPCM
+000172 b90b                      	out UCSRA, tempL ; Сброс бита мультипроцессорного обмена (Logical OR Register and Constant Rd <- Rd v K)
                                  
                                  	; Разрешение прерывания по завершению приема, установка режима приема данных
-000121 e900                      	ldi tempL, (1<<RXCIE)|(1<<RXEN) 
-000122 b90a                      	out UCSRB, tempL
+000173 e900                      	ldi tempL, (1<<RXCIE)|(1<<RXEN) 
+000174 b90a                      	out UCSRB, tempL
                                  
                                  	; Загрузка адреса начала буфера приема в адресный регистр
-000123 e6c0                      	ldi YL, LOW(Buffer_Receive)
-000124 e0d0                      	ldi YH, HIGH(Buffer_Receive)
+000175 e6c0                      	ldi YL, LOW(Buffer_Receive)
+000176 e0d0                      	ldi YH, HIGH(Buffer_Receive)
                                  
-000125 6052                      	ori FLAG_Register, (1<<FLAG_Transmit)
+000177 6052                      	ori FLAG_Register, (1<<FLAG_Transmit)
                                  
                                  	; Flow control на прием
-000126 9a92                      	sbi PORTD, PIN_FLOW_CTRL
+000178 9a92                      	sbi PORTD, PIN_FLOW_CTRL
                                  
                                  ; Загрузка регистров из стэка
                                  Transmit_popRegs_exit:
-000127 911f                      	pop tempH
-000128 910f                      	pop tempL
-000129 bf0f                      	out SREG, tempL
-00012a 910f                      	pop tempL
-00012b 9518                      	reti
+000179 911f                      	pop tempH
+00017a 910f                      	pop tempL
+00017b bf0f                      	out SREG, tempL
+00017c 910f                      	pop tempL
+00017d 9518                      	reti
                                  ;***************************************************************
                                  
-                                 ; Прерывание таймера по совпадению канала A
+                                 ; Прерывание таймера T1 по совпадению канала A
                                  Time_OUT:
                                  	; Сохранение регистров в стэк
-00012c 930f                      	push tempL
-00012d 931f                      	push tempH
-00012e b70f                      	in tempL, SREG
-00012f 930f                      	push tempL
+00017e 930f                      	push tempL
+00017f 931f                      	push tempH
+000180 b70f                      	in tempL, SREG
+000181 930f                      	push tempL
                                  
-                                 	; Запрет прерывания таймера по переполнению канала A
-000130 b709                      	in tempL, TIMSK
-000131 94e8                      	clt
-000132 f904                      	bld tempL, OCIE1A
-000133 bf09                      	out TIMSK, tempL ; OCIE1A запретить прерывание
+                                 	; Запрет прерывания таймера по совпадению канала A
+000182 b709                      	in tempL, TIMSK
+000183 94e8                      	clt
+000184 f904                      	bld tempL, OCIE1A
+000185 bf09                      	out TIMSK, tempL ; OCIE1A запретить прерывание
                                  
-000134 e008                      	ldi tempL, (1<<WGM12) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
+000186 e008                      	ldi tempL, (1<<WGM12) ; WGM13 = 0, WGM12 = 1, WGM11 = 0, WGM10 = 0 => режим CTC (TOP OCR1A)
                                                            ; CS12 = 0, CS11 = 0, CS10 = 0 => Таймер/счетчик остановлен
-000135 bd0e                      	out TCCR1B, tempL ; Выкл. счетчика
+000187 bd0e                      	out TCCR1B, tempL ; Выкл. счетчика
                                  	
                                  	; Сброс счетчика
-000136 e000                      	ldi tempL, 0x00 
-000137 e010                      	ldi tempH, 0x00
-000138 bd1d                      	out TCNT1H, tempH 
-000139 bd0c                      	out TCNT1L, tempL 
+000188 e000                      	ldi tempL, 0x00 
+000189 e010                      	ldi tempH, 0x00
+00018a bd1d                      	out TCNT1H, tempH 
+00018b bd0c                      	out TCNT1L, tempL 
                                  
                                  	; Обнуление регистров
-00013a 2722                      	clr Counter_Receive
-00013b 2744                      	clr Checksum_Receive
+00018c 2722                      	clr Counter_Receive
+00018d 2744                      	clr Checksum_Receive
                                  
                                  	; Установка указателя на начало буфера приема
-00013c e6c0                      	ldi YL, LOW(Buffer_Receive) ; Load Y register low буфер приема
-00013d e0d0                      	ldi YH, HIGH(Buffer_Receive) ; Load Y register high буфер приема
+00018e e6c0                      	ldi YL, LOW(Buffer_Receive) ; Load Y register low буфер приема
+00018f e0d0                      	ldi YH, HIGH(Buffer_Receive) ; Load Y register high буфер приема
                                  
                                  	; Загрузка регистров из стэка
-00013e 910f                      	pop tempL
-00013f bf0f                      	out SREG, tempL
-000140 911f                      	pop tempH
-000141 910f                      	pop tempL
-000142 9518                      	reti
+000190 910f                      	pop tempL
+000191 bf0f                      	out SREG, tempL
+000192 911f                      	pop tempH
+000193 910f                      	pop tempL
+000194 9518                      	reti
                                  ;***************************************************************
                                  
                                  ; Прерывание по завершению измерения АЦП
                                  ADC_Complete:
                                  	; Сохранение регистров в стэк
-000143 930f                      	push tempL
-000144 931f                      	push tempH
-000145 b70f                      	in tempL, SREG
-000146 930f                      	push tempL
+000195 930f                      	push tempL
+000196 931f                      	push tempH
+000197 b70f                      	in tempL, SREG
+000198 930f                      	push tempL
                                  		
                                  Read_ADC:		
                                  	; Получение результатов измерения
-000147 9100 0004                 	lds tempL, ADCL
-000149 9110 0005                 	lds tempH, ADCH
+000199 9100 0004                 	lds tempL, ADCL
+00019b 9110 0005                 	lds tempH, ADCH
                                  
                                  	; Сложение результатов с предыдущими результатами
-00014b 0f60                      	add ADC_H0, tempL
-00014c 1f71                      	adc ADC_L0, tempH
+00019d 0f60                      	add ADC_H0, tempL
+00019e 1f71                      	adc ADC_L0, tempH
                                  
                                  	; Прибавление счетчика
-00014d 95a3                      	inc Counter_ADC
+00019f 95a3                      	inc Counter_ADC
                                  
                                  	; Достигнуто ли максимальное количество измерений
-00014e 30a8                      	cpi Counter_ADC, VALUE_N_ADC
-00014f f039                      	breq ADC_max_measure
+0001a0 30a8                      	cpi Counter_ADC, VALUE_N_ADC
+0001a1 f039                      	breq ADC_max_measure
                                  
                                  	; Начало следующего замера
-000150 ec0e                      	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADSC)|(1<<ADPS2)|(1<<ADPS1) ; АЦП (1-включен), разрешение прерывания от АЦП, запуск преобразования, CLK/64
-000151 b906                      	out ADCSR, tempL
+0001a2 ec0e                      	ldi tempL, (1<<ADEN)|(1<<ADIE)|(1<<ADSC)|(1<<ADPS2)|(1<<ADPS1) ; АЦП (1-включен), разрешение прерывания от АЦП, запуск преобразования, CLK/64
+0001a3 b906                      	out ADCSR, tempL
                                  
                                  ; Загрузка регистров из стэка
                                  ADC_popRegs_exit:
-000152 911f                      	pop tempH
-000153 910f                      	pop tempL
-000154 bf0f                      	out SREG, tempL
-000155 910f                      	pop tempL
-000156 9518                      	reti
+0001a4 911f                      	pop tempH
+0001a5 910f                      	pop tempL
+0001a6 bf0f                      	out SREG, tempL
+0001a7 910f                      	pop tempL
+0001a8 9518                      	reti
                                  
                                  ; Достигнуто максимальное количество измерений
                                  ADC_max_measure:
-000157 e0a3                      	ldi Counter_ADC, VALUE_SHIFT
-000158 2700                      	clr tempL
+0001a9 e0a3                      	ldi Counter_ADC, VALUE_SHIFT
+0001aa 2700                      	clr tempL
                                  
                                  ; Вычисление среднего арифметического (деление на два сдвигом)
                                  ADC_high_part_shift: 
-000159 9566                      	lsr ADC_H0 ; Logical Shift Right (Сдвиг старшего слова данных)
-00015a f408                      	brcc ADC_low_part_shift ; Branch if Carry Cleared
-00015b e800                      	ldi tempL, 0b10000000
+0001ab 9566                      	lsr ADC_H0 ; Logical Shift Right (Сдвиг старшего слова данных)
+0001ac f408                      	brcc ADC_low_part_shift ; Branch if Carry Cleared
+0001ad e800                      	ldi tempL, 0b10000000
                                  
                                  ADC_low_part_shift:
-00015c 9576                      	lsr ADC_L0 ; (Сдвиг младшего слова данных)
-00015d 2b70                      	or ADC_L0, tempL
-00015e 95aa                      	dec Counter_ADC
-00015f 30a0                      	cpi Counter_ADC, 0
-000160 f009                      	breq ADC_end
-000161 cff7                      	rjmp ADC_high_part_shift
+0001ae 9576                      	lsr ADC_L0 ; (Сдвиг младшего слова данных)
+0001af 2b70                      	or ADC_L0, tempL
+0001b0 95aa                      	dec Counter_ADC
+0001b1 30a0                      	cpi Counter_ADC, 0
+0001b2 f009                      	breq ADC_end
+0001b3 cff7                      	rjmp ADC_high_part_shift
                                  
                                  ADC_end:
-000162 27aa                      	clr Counter_ADC
+0001b4 27aa                      	clr Counter_ADC
                                  	; Установка флага окончания вычисления значения АЦП
-000163 6054                      	ori FLAG_Register, (1<<FLAG_ADC_Ready)
-000164 30b1                      	cpi Number, 1
-000165 f009                      	breq ADC_change_reg
-000166 cfeb                      	rjmp ADC_popRegs_exit
+0001b5 6054                      	ori FLAG_Register, (1<<FLAG_ADC_Ready)
+0001b6 30b1                      	cpi Number, 1
+0001b7 f009                      	breq ADC_change_reg
+0001b8 cfeb                      	rjmp ADC_popRegs_exit
                                  	
                                  ADC_change_reg:
-000167 2f97                      	mov ADC_L1, ADC_L0
-000168 2f86                      	mov ADC_H1, ADC_H0
-000169 9508                      	ret
+0001b9 2f97                      	mov ADC_L1, ADC_L0
+0001ba 2f86                      	mov ADC_H1, ADC_H0
+0001bb 9508                      	ret
+                                 ;***************************************************************
+                                 
+                                 ; Прерывание таймера T0 по переполнению
+                                 T0_Overflow: 
+                                 ; Сохранение регистров в стэк 
+0001bc 930f                      	push tempL
+0001bd 931f                      	push tempH
+0001be b70f                      	in tempL, SREG
+0001bf 930f                      	push tempL
+                                 
+                                 ; Сравнение счетчика переполненй с VALUE_TimeOUT_T0            
+0001c0 95e3                      	inc TimeOUT_T0
+0001c1 30e2                      	cpi TimeOUT_T0, VALUE_TimeOUT_T0 
+0001c2 f411                      	brne T0_popRegs_exit
+                                 	; Установка флага прошествия 50 мс с момента последнего АЦП преобразования
+0001c3 6150                      	ori FLAG_Register, (1<<FLAG_ADC_Delay)
+0001c4 27ee                      	clr TimeOUT_T0
+                                 		   
+                                 ; Загрузка регистров из стэка
+                                 T0_popRegs_exit:	
+0001c5 910f                      	pop    tempL
+0001c6 bf0f                      	out    SREG,tempL
+0001c7 911f                      	pop    tempH 
+0001c8 910f                      	pop    tempL
+0001c9 9518                      	reti
 
 
 RESOURCE USE INFORMATION
@@ -1596,29 +1796,29 @@ counted separately from r26..r31 here.
 "ATmega16A" register use summary:
 x  :   0 y  :  16 z  :   0 r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 
 r5 :   0 r6 :   0 r7 :   0 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 
-r13:   0 r14:   0 r15:   0 r16: 149 r17:  35 r18:   5 r19:   8 r20:   7 
-r21:  14 r22:   5 r23:   6 r24:   3 r25:   3 r26:   7 r27:   3 r28:  11 
-r29:  11 r30:   0 r31:   0 
-Registers used: 15 out of 35 (42.9%)
+r13:   0 r14:   0 r15:   0 r16: 162 r17:  46 r18:   5 r19:   8 r20:   7 
+r21:  18 r22:   9 r23:  10 r24:   7 r25:   7 r26:   7 r27:   3 r28:  11 
+r29:  11 r30:   4 r31:   0 
+Registers used: 16 out of 35 (45.7%)
 
 "ATmega16A" instruction use summary:
-.lds  :   0 .sts  :   0 adc   :   2 add   :   6 adiw  :   0 and   :   0 
-andi  :   3 asr   :   0 bclr  :   0 bld   :  10 brbc  :   0 brbs  :   0 
+.lds  :   0 .sts  :   0 adc   :   2 add   :   7 adiw  :   0 and   :   0 
+andi  :   6 asr   :   0 bclr  :   0 bld   :  15 brbc  :   0 brbs  :   0 
 brcc  :   1 brcs  :   0 break :   0 breq  :   9 brge  :   0 brhc  :   0 
 brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 
-brne  :   4 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 
+brne  :  21 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 
 brvs  :   0 bset  :   0 bst   :   0 call  :   0 cbi   :   1 cbr   :   0 
-clc   :   0 clh   :   0 cli   :   0 cln   :   0 clr   :  22 cls   :   0 
-clt   :   7 clv   :   0 clz   :   0 com   :   2 cp    :   1 cpc   :   0 
-cpi   :  11 cpse  :   0 dec   :   4 eor   :   0 fmul  :   0 fmuls :   0 
-fmulsu:   0 icall :   0 ijmp  :   0 in    :  12 inc   :   3 jmp   :   0 
+clc   :   0 clh   :   0 cli   :   0 cln   :   0 clr   :  23 cls   :   0 
+clt   :   8 clv   :   0 clz   :   0 com   :   2 cp    :   1 cpc   :   0 
+cpi   :  28 cpse  :   0 dec   :   4 eor   :   0 fmul  :   0 fmuls :   0 
+fmulsu:   0 icall :   0 ijmp  :   0 in    :  13 inc   :   4 jmp   :   0 
 ld    :   6 ldd   :   0 ldi   :  65 lds   :   4 lpm   :   0 lsl   :   0 
-lsr   :   2 mov   :   3 movw  :   0 mul   :   0 muls  :   0 mulsu :   0 
-neg   :   0 nop   :   0 or    :   1 ori   :   4 out   :  44 pop   :  14 
-push  :  14 rcall :   0 ret   :   3 reti  :  20 rjmp  :  28 rol   :   0 
+lsr   :   2 mov   :   4 movw  :   0 mul   :   0 muls  :   0 mulsu :   0 
+neg   :   0 nop   :   0 or    :   1 ori   :   6 out   :  45 pop   :  17 
+push  :  17 rcall :   0 ret   :   2 reti  :  21 rjmp  :  59 rol   :   0 
 ror   :   0 sbc   :   0 sbci  :   0 sbi   :   1 sbic  :   0 sbis  :   0 
-sbiw  :   0 sbr   :   0 sbrc  :   4 sbrs  :   2 sec   :   0 seh   :   0 
-sei   :   1 sen   :   0 ser   :   0 ses   :   0 set   :   4 sev   :   0 
+sbiw  :   0 sbr   :   0 sbrc  :  10 sbrs  :   3 sec   :   0 seh   :   0 
+sei   :   1 sen   :   0 ser   :   0 ses   :   0 set   :   6 sev   :   0 
 sez   :   0 sleep :   0 spm   :   0 st    :  10 std   :   0 sts   :   5 
 sub   :   0 subi  :   0 swap  :   0 tst   :   0 wdr   :   0 
 Instructions used: 36 out of 113 (31.9%)
@@ -1626,8 +1826,8 @@ Instructions used: 36 out of 113 (31.9%)
 "ATmega16A" memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x0002d4    684      0    684   16384   4.2%
+[.cseg] 0x000000 0x000394    878      0    878   16384   5.4%
 [.dseg] 0x000060 0x000070      0     16     16    1024   1.6%
 [.eseg] 0x000000 0x000000      0      0      0     512   0.0%
 
-Assembly complete, 0 errors, 2 warnings
+Assembly complete, 0 errors, 3 warnings
